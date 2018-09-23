@@ -1,0 +1,54 @@
+* Coherence scales in H II regions
+
+** Velocity maps of Carina and Lagoon
+
++ Gaia-ESO spectroscopy
+  + Damiano:2016a Carina
+    + 10 arcmin at 2.3 kpc = 6 pc
+    + 10 arcsec = 0.1 pc
+    + Can analyze blue and red components separately and together
+  + Damiano:2017b Lagoon
++ MUSE spectroscopy
+  + McLeod:2016a Carina
+    + 2 arcmin at 2.3 kpc = 1.3 pc
+    + 1 arcsec = 0.01 pc
+  + Mc-Leod:2016a Orion
+    + 5 arcmin at 410 pc = 0.6 pc
+    + 1 arcsec = 0.002 pc
+    + Amplitude is about 10 km/s
+  + Castro:2018a Tarantula (30 Dor)
+    + These are excellent
+    + 2 arcmin at 50 kpc = 30 pc
+    + 1 arcsec = 0.242 pc
+    + Amplitude is about 40 km/s
+    + Looks like 5 arcsec is typical fluctuation scale => 1 pc
+    + Anti correlation of intensity with \sigma(LOS) - see Fig 7
+    + Could use density and de-extincted H\alpha to get LOS thickness
+  + McLeod:2015a Eagle pillars
+    + A bit too noisy to do much with
++ Longslit spectroscopy
+  + Arthur:2016a Orion
+    + Find scale of 0.05 pc decorrelation scale from struc func
+    + Similar scale from power spectrum of brightness
+    + Inner scale of 0.02 pc, but not clear what this is
+
+
+
+** Download the datasets
+
+*** Carina Damiano data
++ 
+
+*** 
+
+** Papers for Mariano
++ Damiani 2017 Lagoon
+  + https://www.dropbox.com/s/xzouvpragh86bke/Damiani2017b-0.pdf?dl=0
++ Damiani 2016 Carina
+  + https://www.dropbox.com/s/2t9emfwm7mzv995/Damiani2016a-0.pdf?dl=0
++ Arthur 2016 Orion
+  + https://www.dropbox.com/s/73fge4zo8j10mx0/Arthur2016a-0.pdf
++ Medina 2014 Simulaciones
+  + https://www.dropbox.com/s/9oxtmdh8kwqseky/Medina2014a-0.pdf?dl=0
++ García-Díaz 2008 Orion
+  + https://www.dropbox.com/s/migybjp7ucwoxie/Garcia-Diaz2008a-0.pdf?dl=0
