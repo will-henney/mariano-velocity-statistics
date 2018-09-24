@@ -165,6 +165,8 @@ dfHa = pd.DataFrame(
      'R_B': df.Ha_rb_ratio,
      'dV': df.Ha_dV,
      'close': df.Ha_close,
+     'RAdeg': df.RAdeg,
+     'DEdeg': df.DEdeg,
     }
 ).dropna()
 
@@ -334,6 +336,8 @@ dfSii = pd.DataFrame(
      'sigma12': sSii1/sSii2,
      'skew': gSii2,
      'close': pd.Categorical((df['[SII]2RVr'] - df['[SII]2RVb'] < 18.0).astype('S5')),
+     'RAdeg': df.RAdeg,
+     'DEdeg': df.DEdeg
     }
 ).dropna()
 
@@ -358,5 +362,589 @@ sns.pairplot(dfSii,
 # Finally, the doublet velocity difference is marginally significantly non-zero: $0.6 \pm 0.5$.  This presumably is related to the differing densities in the blue and red layers.
 
 # *We should also do it for the blue and red components separately*
+
+# ## Correlations between different lines
+
+# # Finally, the structure function
+
+# ## Test of cartesian product of dataframes
+#
+# As long as the number of points is not too large, we should be able to do all the work within pandas.  The first thing to do is to make a multi-indexed dataframe that has all the pairs of points.  To make it efficient, we will just use Ra, Dec, and combined Ha velocity.
+
+# I use a technique of joining on a temporary column, which I call `_key`, that is set to a constant (`1`) so that merging two copies of the length-$N$ dataframe produces an outer product with $N \times N$ rows, containing all pairwise combinations of the rows from the two copies. I use the `suffixes` argument to add `_` to the columns from the second copy.  This is inspired by [this blog post](https://mkonrad.net/2016/04/16/cross-join--cartesian-product-between-pandas-dataframes.html) and [this SO discussion](https://stackoverflow.com/questions/13269890/cartesian-product-in-pandas).
+
+df1 = pd.DataFrame(
+    {'RA': df.RAdeg, 'DE': df.DEdeg, 'V': vHa, '_key': 1}
+)
+
+
+df1.describe()
+
+df2 = df1.copy()
+
+# Now do the Cartesian product and drop the temporary column.
+
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+
+pairs.head()
+
+# Add new columns for differences in coordinates (convert to arcsec) and velocities.
+
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+
+# Only keep rows with $\Delta > 0$ in RA and Dec, so that we cut out the repeated points. 
+
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+
+pairs.head()
+
+pairs.describe()
+
+pairs.corr()
+
+mask = (pairs.log_s > 0.0) & (pairs.log_dV2 > -3)
+ax = sns.jointplot(x='log_s', y='dV', data=pairs[mask], alpha=0.2, s=1, edgecolor='none')
+ax.fig.set_size_inches(12, 12)
+
+mask = (pairs.log_s > 0.0) & (pairs.log_dV2 > -3)
+ax = sns.jointplot(x='log_s', y='log_dV2', data=pairs[mask], alpha=0.2, s=1, edgecolor='none')
+ax.fig.set_size_inches(12, 12)
+
+# That is now looking more promising.  The distributions look narrower at smaller separations.
+
+# Introduce separation classes at intervals of 0.5 dex:
+
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+
+# Merge the bottom two separation classes, since there aren't enough points to go round
+
+pairs.s_class[pairs.s_class == 0] = 1
+
+# Now look at the stats for each separation class.  The bottom one should be empty.
+
+for j in range(7):
+    print()
+    print("s_class =", j)
+    print(pairs[pairs.s_class == j][['dV2', 'log_s']].describe())
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
+for sclass, ax in zip(range(1, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=True, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.0])
+                )
+    ax.plot([np.log10(b2mean)], [0.2], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.0])
+    ax.legend(loc='upper left')
+sns.despine()
+
+print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
+
+ngroup = 500
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', alpha=0.4)
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[9.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# ### Repeat structure function but for components
+#
+# Start with the blue component
+
+dfm = df[(df.Ha_dV >= 18.0) & (dfm.HaRVb > -40.0) & (dfm.HaRVb < -10.0)]
+df1 = pd.DataFrame(
+    {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm.HaRVb, '_key': 1}
+)
+df2 = df1.copy()
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+pairs.s_class[pairs.s_class == 0] = 2
+pairs.groupby('s_class')[['s', 'dV2']].describe()
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
+for sclass, ax in zip(range(1, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=False, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.3], color='c')
+                )
+    ymax = ax.get_ybound()[1]
+    ax.plot([np.log10(b2mean)], [0.2*ymax], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2*ymax]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.axvline(np.log10(0.5*sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.3])
+    ax.legend(loc='upper left')
+sns.despine()
+
+smasks = [
+    pairs.s_class <= 2,
+    pairs.s_class == 3,
+    pairs.s_class == 4,
+    pairs.s_class >= 5
+]
+titles = ['10 arcsec', '40 arcsec', '2 arcmin', '10 arcmin']
+for smask, title in zip(smasks, titles):
+#    ax.scatter('V', 'V_', data=pairs[smask], marker='.', alpha=1.0, s=0.02)
+    sns.jointplot('VV_mean', 'dV', data=pairs[smask], kind='hex')
+sns.despine()
+
+fig, axes = plt.subplots(2, 2, figsize=(8, 8), sharex=True, sharey=True)
+for smask, ax, title in zip(smasks, axes.flat, titles):
+    ax.scatter('RA', 'RA_', data=pairs[smask], marker='.', alpha=1.0, s=0.02)
+    ax.set_aspect('equal')
+    ax.set_title(title)
+sns.despine()
+
+print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
+
+ngroup = 200
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', color='c', alpha=0.4)
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[6.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# OK, pretty similar.  Now for the red component.
+
+dfm = df[df.Ha_dV >= 18.0]
+df1 = pd.DataFrame(
+    {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm.HaRVr, '_key': 1}
+)
+df2 = df1.copy()
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+pairs.s_class[pairs.s_class == 0] = 1
+pairs.groupby('s_class')[['s', 'dV2']].describe()
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
+for sclass, ax in zip(range(1, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=True, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.3], color='r')
+                )
+    ymax = ax.get_ybound()[1]
+    ax.plot([np.log10(b2mean)], [0.2*ymax], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2*ymax]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.axvline(np.log10(0.5*sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.3])
+    ax.legend(loc='upper left')
+sns.despine()
+
+print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
+
+ngroup = 500
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', color='r', alpha=0.4)
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[6.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# Try [S II] lines.
+
+dfm = df[df['[SII]1RVr'] - df['[SII]1RVb'] >= 18.0]
+df1 = pd.DataFrame(
+    {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm['[SII]1RVb'], '_key': 1}
+).dropna()
+df2 = df1.copy()
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+pairs.s_class[pairs.s_class == 0] = 1
+pairs.groupby('s_class')[['s', 'dV2']].describe()
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
+for sclass, ax in zip(range(1, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=False, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.3], color='c')
+                )
+    ymax = ax.get_ybound()[1]
+    ax.plot([np.log10(b2mean)], [0.2*ymax], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2*ymax]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.axvline(np.log10(0.5*sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.3])
+    ax.legend(loc='upper left')
+sns.despine()
+
+print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
+
+ngroup = 500
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', color='c', alpha=0.4)
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[6.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+dfm = df[df['[SII]1RVr'] - df['[SII]1RVb'] >= 18.0]
+df1 = pd.DataFrame(
+    {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm['[SII]1RVr'], '_key': 1}
+).dropna()
+df2 = df1.copy()
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+pairs.s_class[pairs.s_class == 0] = 1
+pairs.groupby('s_class')[['s', 'dV2']].describe()
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
+for sclass, ax in zip(range(1, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=True, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.3], color='r')
+                )
+    ymax = ax.get_ybound()[1]
+    ax.plot([np.log10(b2mean)], [0.2*ymax], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2*ymax]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.axvline(np.log10(0.5*sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.3])
+    ax.legend(loc='upper left')
+sns.despine()
+
+ngroup = 500
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', color='r', alpha=0.4)
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[6.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# Try He I line
+
+dfm = df[(df['HeIRVr'] - df['HeIRVb'] >= 18.0) & (df.HeIRVb > -70.0)]
+df1 = pd.DataFrame(
+    {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm['HeIRVb'], '_key': 1}
+).dropna()
+df2 = df1.copy()
+pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
+pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
+pairs.loc[:, 'dDE'] = 3600*(pairs.DE - pairs.DE_)
+pairs.loc[:, 'dRA'] = 3600*(pairs.RA - pairs.RA_)*np.cos(np.radians(0.5*(pairs.DE + pairs.DE_)))
+pairs.loc[:, 's'] = np.hypot(pairs.dRA, pairs.dDE)
+pairs.loc[:, 'log_s'] = np.log10(pairs.s)
+pairs.loc[:, 'dV'] = pairs.V - pairs.V_
+pairs.loc[:, 'dV2'] = pairs.dV**2
+pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
+pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
+pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
+pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+pairs.s_class[pairs.s_class <= 1] = 2
+pairs.groupby('s_class')[['s', 'dV2']].describe()
+
+sig2 = pairs.dV2.mean()
+sig2a = 2*np.var(df1.V)
+fig, axes = plt.subplots(5, 1, figsize=(10, 12.5), sharex=True)
+for sclass, ax in zip(range(2, 7), axes):
+    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
+    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
+    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
+    n = np.sum(pairs.s_class == sclass)
+    b2sem = b2std/np.sqrt(n)
+    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    label = f"$s = {smean:.1f}''$"
+    label += f", $N = {n}$"
+    label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
+    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+                 norm_hist=False, kde=False, ax=ax,
+                 label=label, bins=20, hist_kws=dict(range=[-3.0, 3.3], color='c')
+                )
+    ymax = ax.get_ybound()[1]
+    ax.plot([np.log10(b2mean)], [0.2*ymax], 'o', color='k')
+    ax.plot([np.log10(b2mean - b2sem), np.log10(b2mean + b2sem)], [0.2*ymax]*2, lw=3, color='k')
+    ax.axvline(np.log10(sig2a), color='k', ls=':')
+    ax.axvline(np.log10(0.5*sig2a), color='k', ls=':')
+    ax.set(xlim=[-3.0, 3.3])
+    ax.legend(loc='upper left')
+sns.despine()
+
+print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
+
+ngroup = 200
+groups = np.arange(len(pairs)) // ngroup
+table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+table[[('s', 'mean'), ('s', 'std'), ('dV2', 'mean'), ('dV2', 'std'), ('dV2', 'count')]]
+
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', 'mean')]
+e_s = table[('s', 'std')]
+b2 = table[('dV2', 'mean')]
+ng = table[('dV2', 'count')]
+e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
+#ax.plot(s, b2, 'o')
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o')
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[9.0, 150.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# ## Maps of the velocities
+
+with sns.axes_style("darkgrid"):
+    fig, [axr, axb] = plt.subplots(1, 2, figsize=(18, 8))
+    scat = axr.scatter(df.RAdeg, df.DEdeg, 
+                      s=40*(np.log10(df.HaNr/df.HaNb) + 1.3), 
+                      c=df.HaRVr, cmap='RdBu_r',
+                      vmin=-55, vmax=35, 
+                     )
+    scat = axb.scatter(df.RAdeg, df.DEdeg, 
+                      s=40*(np.log10(df.HaNb/df.HaNr) + 1.3), 
+                      c=df.HaRVb, cmap='RdBu_r',
+                      vmin=-55, vmax=35,
+                     )
+#    scat2 = ax.scatter(df.RAdeg, df.DEdeg, 
+#                      s=50*(np.log10(df.HaNr) - 3), 
+#                      c=df.HaRVr, cmap='RdBu_r',
+#                      vmin=-55, vmax=35, marker='+',
+#                     )
+    fig.colorbar(scat, ax=[axr, axb])
+    axr.invert_xaxis()
+    axr.set_aspect(2.0)
+    axb.invert_xaxis()
+    axb.set_aspect(2.0)  
+    axr.set_title('H alpha red layer velocity')
+    axb.set_title('H alpha blue layer velocity')    
+
+# Here, the symbol size is proportional to the relative brightness of that layer. We can see linear structures, which clearly show the correlation identified above: velocity of each layer is anticorrelated with its relative brightness.
+
+with sns.axes_style("darkgrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(dfHa.RAdeg, dfHa.DEdeg, s=8*(dfHa.sigma - 12), c=dfHa.V_mean, cmap='RdBu_r')
+    fig.colorbar(scat, ax=ax).set_label("$V$")
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title("H alpha mean velocity")
+
+with sns.axes_style("darkgrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(df.RAdeg, df.DEdeg, s=50*(np.log10(df.HaNr/df.HaNb) + 1.0), c=df.HaRVr - df.HaRVb, cmap='magma')
+    fig.colorbar(scat, ax=ax).set_label("$V_r - V_b$")
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title("H alpha red–blue layer velocity difference")
+
+with sns.axes_style("whitegrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(df.RAdeg, df.DEdeg, s=100, c=df.HaNb, cmap='gray_r', vmin=0.0, vmax=4e5)
+    fig.colorbar(scat, ax=ax)
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title('H alpha blue layer brightness')
+
+# + {"scrolled": false}
+with sns.axes_style("whitegrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(df.RAdeg, df.DEdeg, s=100, c=df.HaNr, cmap='gray_r', vmin=0.0, vmax=4e5)
+    fig.colorbar(scat, ax=ax)
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title('H alpha red layer brightness')
+# -
+
+def eden(R):
+    """Approximate sii electron density from R=6717/6731"""
+    RR = 1.0/R
+    return 2489*(RR - 0.6971) / (2.3380 - RR)
+
+with sns.axes_style("whitegrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(dfSii.RAdeg, dfSii.DEdeg, s=100, c=eden(dfSii.R12), cmap='gray_r', vmin=0.0, vmax=1000.0)
+    fig.colorbar(scat, ax=ax).set_label('6717/6731')
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title('[S II] doublet ratio')
+
+
+
+
+
+
+
+
+
+pairs.s_class.cat.categories
+
+(pairs.s_class < 5).sum()
+
+(pairs.s_class >= 6).sum()
+
+(pairs.s_class == 5).sum()
 
 
