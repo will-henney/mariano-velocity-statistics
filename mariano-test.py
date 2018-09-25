@@ -337,7 +337,9 @@ dfSii = pd.DataFrame(
      'skew': gSii2,
      'close': pd.Categorical((df['[SII]2RVr'] - df['[SII]2RVb'] < 18.0).astype('S5')),
      'RAdeg': df.RAdeg,
-     'DEdeg': df.DEdeg
+     'DEdeg': df.DEdeg,
+     'F_Ha': df.HaNr + df.HaNb,
+     'F_Nii': df['[NII]Nr'] + df['[NII]Nr'],
     }
 ).dropna()
 
@@ -857,6 +859,16 @@ None
 
 # ## Maps of the velocities
 
+points_of_interest = {
+    "eta Car": [161.26517, -59.684425],
+    "Tr 14": [160.98911, -59.547698],
+    "WR 25": [161.0433, -59.719735],
+    "Finger": [161.13133, -59.664035],
+}
+def mark_points(ax):
+    for label, c in points_of_interest.items():
+        ax.plot(c[0], c[1], marker='+', markersize='12', color='k')
+
 with sns.axes_style("darkgrid"):
     fig, [axr, axb] = plt.subplots(1, 2, figsize=(18, 8))
     scat = axr.scatter(df.RAdeg, df.DEdeg, 
@@ -875,6 +887,8 @@ with sns.axes_style("darkgrid"):
 #                      vmin=-55, vmax=35, marker='+',
 #                     )
     fig.colorbar(scat, ax=[axr, axb])
+    mark_points(axr)
+    mark_points(axb)
     axr.invert_xaxis()
     axr.set_aspect(2.0)
     axb.invert_xaxis()
@@ -887,6 +901,7 @@ with sns.axes_style("darkgrid"):
 with sns.axes_style("darkgrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
     scat = ax.scatter(dfHa.RAdeg, dfHa.DEdeg, s=8*(dfHa.sigma - 12), c=dfHa.V_mean, cmap='RdBu_r')
+    mark_points(ax)
     fig.colorbar(scat, ax=ax).set_label("$V$")
     ax.invert_xaxis()
     ax.set_aspect(2)
@@ -894,8 +909,9 @@ with sns.axes_style("darkgrid"):
 
 with sns.axes_style("darkgrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
-    scat = ax.scatter(df.RAdeg, df.DEdeg, s=50*(np.log10(df.HaNr/df.HaNb) + 1.0), c=df.HaRVr - df.HaRVb, cmap='magma')
+    scat = ax.scatter(df.RAdeg, df.DEdeg, s=50*(np.log10(df.HaNr/df.HaNb) + 1.0), c=df.HaRVr - df.HaRVb, cmap='viridis')
     fig.colorbar(scat, ax=ax).set_label("$V_r - V_b$")
+    mark_points(ax)   
     ax.invert_xaxis()
     ax.set_aspect(2)
     ax.set_title("H alpha red–blue layer velocity difference")
@@ -904,6 +920,7 @@ with sns.axes_style("whitegrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
     scat = ax.scatter(df.RAdeg, df.DEdeg, s=100, c=df.HaNb, cmap='gray_r', vmin=0.0, vmax=4e5)
     fig.colorbar(scat, ax=ax)
+    mark_points(ax)
     ax.invert_xaxis()
     ax.set_aspect(2)
     ax.set_title('H alpha blue layer brightness')
@@ -913,6 +930,7 @@ with sns.axes_style("whitegrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
     scat = ax.scatter(df.RAdeg, df.DEdeg, s=100, c=df.HaNr, cmap='gray_r', vmin=0.0, vmax=4e5)
     fig.colorbar(scat, ax=ax)
+    mark_points(ax)
     ax.invert_xaxis()
     ax.set_aspect(2)
     ax.set_title('H alpha red layer brightness')
@@ -926,14 +944,34 @@ def eden(R):
 with sns.axes_style("whitegrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
     scat = ax.scatter(dfSii.RAdeg, dfSii.DEdeg, s=100, c=eden(dfSii.R12), cmap='gray_r', vmin=0.0, vmax=1000.0)
-    fig.colorbar(scat, ax=ax).set_label('6717/6731')
+    fig.colorbar(scat, ax=ax).set_label('$n_e$')
+    mark_points(ax)
     ax.invert_xaxis()
     ax.set_aspect(2)
-    ax.set_title('[S II] doublet ratio')
+    ax.set_title('[S II] density')
 
+with sns.axes_style("whitegrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(dfSii.RAdeg, dfSii.DEdeg, s=100, 
+                      c=dfSii.F_Ha/eden(dfSii.R12)**2, 
+                      vmin=0.0, vmax=50.0, cmap='inferno_r')
+    fig.colorbar(scat, ax=ax).set_label('$H$')
+    mark_points(ax)
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title('Effective layer thickness')
 
-
-
+dfSN = dfSii[dfSii.F_Nii > 0.0]
+with sns.axes_style("whitegrid"):
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scat = ax.scatter(dfSN.RAdeg, dfSN.DEdeg, s=100, 
+                      c=dfSN.F_Nii/dfSN.F_Ha, 
+                      cmap='hot_r')
+    fig.colorbar(scat, ax=ax).set_label('$6583 / 6563$')
+    mark_points(ax)
+    ax.invert_xaxis()
+    ax.set_aspect(2)
+    ax.set_title('[N II] / H alpha ratio')
 
 
 

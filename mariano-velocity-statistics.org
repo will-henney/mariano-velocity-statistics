@@ -1,5 +1,10 @@
 * Coherence scales in H II regions
 
+** Plan
++ Derive velocity structure functions for H II regions of different sizes:
+  + Lagoon, Carina, Tarantula
++ Compare 
+
 ** Velocity maps of Carina and Lagoon
 
 + Gaia-ESO spectroscopy
@@ -8,6 +13,8 @@
     + 10 arcsec = 0.1 pc
     + Can analyze blue and red components separately and together
   + Damiano:2017b Lagoon
+    + D = 1250 pc
+    + Total extent: 0.8 deg = 17 pc
 + MUSE spectroscopy
   + McLeod:2016a Carina
     + 2 arcmin at 2.3 kpc = 1.3 pc
@@ -31,16 +38,68 @@
     + Find scale of 0.05 pc decorrelation scale from struc func
     + Similar scale from power spectrum of brightness
     + Inner scale of 0.02 pc, but not clear what this is
+** Comparison with neutral/molecular gas
++ Tiwari:2018a have CO, etc for Lagoon region
+  + Ionized gas is at negative velocities with respect to CO
+    + Lada:1976a have +11 km/s LSR for CO at biggest clump
+  + This is reminiscent of champagne flow, as in Orion
++ Esteban:1999a have multiple optical lines for M42 (Orion), M17 (Eagle), and M8 (Lagoon)
+  + For Lagoon
+    + Slit is 25 arcsec S of Hourglass
+    + V(HEL) approx -2 km/s for low-ionization lines
+    + Higher ionization lines are more like -10
+    + Discrepant results for [O I] and [N I] but may suffer from sky line contamination
+  + They find a velocity-IP correlation in all cases, indicating blue-shifted champagne flows
++ Looks like main ionizing star is 1pc in front of cloud in Lagoon
+  + From Fig 20 of Damiani:2017a
+
+** Stage 1 of Mariano project
+
+*** DONE Download the Gaia-ESO datasets
+CLOSED: [2018-09-25 Tue 08:41]
++ Damiani Carina
+  + [[file:data/J_A+A_591_A74_table1.dat.fits]]
++ Damiani Lagoon
+  + [[file:data/J_A+A_604_A135_table2.dat.fits]]
+
+*** DONE Initial look at Carina data by Will
+CLOSED: [2018-09-25 Tue 10:25]
+See
+ + Jupyter notebook: [[file:mariano-test.ipynb]]
+ + Pure python version: [[file:mariano-test.py]]
+
+*** TODO Initial look at Lagoon data by Mariano
++ [ ] Install required packages
++ [ ] Load data with astropy
++ [ ] Convert to pandas
++ [ ] Clean up data as necessary
++ [ ] Look at correlations
++ [ ] Make maps
++ [ ] Calculate structure functions
 
 
+** Prior art on structure function
++ Lagoon
+  + Chakraborty:1999a calculated the [O III] structure function of Hourglass region
+    + Separations of 2-30 arcsec (so very little dynamic range)
+    + As compared with up to 1800 arcsec in Damiani
+    + They did something very strange to eliminate large scale gradients
+    + And their absolute values are very large: saturates at 280 km^2/s^2
+  + Chakraborty:1997a give [N II] velocity image but do not calculate statistics
+    + And they don't even have absolute velocities
 
-** Download the datasets
-
-*** Carina Damiano data
+** Further stages
+*** Obtain more data
+**** MUSE data on Carina
++ McLeod:2016a best region is around "defiant finger", just to W of Keyhole.
+  + That is the brightest region, and only one that overlaps the Gaia-ESO observations
+  + Other regions are fainter and are in the periphery of the nebula
++ As well as the published McLeod:2016a stuff, there are new observations of the Tr14 region, which are available from the data archive
++ There is a python package for working with MUSE data: ~mpdaf~, which might or might not be useful
+  + There is the option of working with /pixel tables/, which have not been resampled
+  + This might help avoid some of the artefacts seen in the velocity maps
+**** MUSE data on 30 Dor
 + 
-
-*** 
-
 ** Papers for Mariano
 + Damiani 2017 Lagoon
   + https://www.dropbox.com/s/xzouvpragh86bke/Damiani2017b-0.pdf?dl=0
