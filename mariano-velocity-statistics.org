@@ -38,7 +38,8 @@
     + Find scale of 0.05 pc decorrelation scale from struc func
     + Similar scale from power spectrum of brightness
     + Inner scale of 0.02 pc, but not clear what this is
-** Comparison with neutral/molecular gas
+** Other literature on Lagoon kinematics
+*** Relation to molecular/neutral gas
 + Tiwari:2018a have CO, etc for Lagoon region
   + Ionized gas is at negative velocities with respect to CO
     + Lada:1976a have +11 km/s LSR for CO at biggest clump
@@ -50,8 +51,24 @@
     + Higher ionization lines are more like -10
     + Discrepant results for [O I] and [N I] but may suffer from sky line contamination
   + They find a velocity-IP correlation in all cases, indicating blue-shifted champagne flows
-+ Looks like main ionizing star is 1pc in front of cloud in Lagoon
+*** Dominant sources of ionizing radiation
++ Looks like main ionizing star (9 Sgr) is 1pc in front of cloud in Lagoon
   + From Fig 20 of Damiani:2017a
+*** Prior art on Lagoon structure function
++ Chakraborty:1999a calculated the [O III] structure function of Hourglass region
+  + Separations of 2-30 arcsec (so very little dynamic range)
+  + As compared with up to 1800 arcsec in Damiani
+  + They did something very strange to eliminate large scale gradients
+  + And their absolute values are very large: saturates at 280 km^2/s^2
++ Chakraborty:1997a give [N II] velocity image but do not calculate statistics
+  + And they don't even have absolute velocities
+*** Previous studies of large scale kinematics
++ Haenel:1987a did FP spectroscopy of the entire nebula and has a grid at 50 arcsec resolution (0.014 deg)
+  + 34 x 26 pixels = 0.5 x 0.4 degrees
+  + Velocities are LSR
+  + Seems to agree more or less with Damiani, given the 10 km/s difference between heliocentric and LSR
++ So this is very similar number of points to the Damiani data, but coverage is more uniform
+
 
 ** Stage 1 of Mariano project
 
@@ -78,16 +95,6 @@ See
 + [ ] Calculate structure functions
 
 
-** Prior art on structure function
-+ Lagoon
-  + Chakraborty:1999a calculated the [O III] structure function of Hourglass region
-    + Separations of 2-30 arcsec (so very little dynamic range)
-    + As compared with up to 1800 arcsec in Damiani
-    + They did something very strange to eliminate large scale gradients
-    + And their absolute values are very large: saturates at 280 km^2/s^2
-  + Chakraborty:1997a give [N II] velocity image but do not calculate statistics
-    + And they don't even have absolute velocities
-
 ** Further stages
 *** Obtain more data
 **** MUSE data on Carina
@@ -99,7 +106,11 @@ See
   + There is the option of working with /pixel tables/, which have not been resampled
   + This might help avoid some of the artefacts seen in the velocity maps
 **** MUSE data on 30 Dor
-+ 
+*** Larger scale patterns in Orion 
++ Haenel:1987a have maps at arcmin scale for whole nebula
++ [ ] Could extend velocity statistics for Orion by combining this with the Arthur:2016a Garcia-Diaz:2008a data
+
+
 ** Papers for Mariano
 + Damiani 2017 Lagoon
   + https://www.dropbox.com/s/xzouvpragh86bke/Damiani2017b-0.pdf?dl=0
