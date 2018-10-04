@@ -39,6 +39,8 @@
     + Similar scale from power spectrum of brightness
     + Inner scale of 0.02 pc, but not clear what this is
 ** Other literature on Lagoon kinematics
++ Also see the images in introduction to my Greece talk
+  + [[file:~/Dropbox/Presentations/Olympia2014/wjh-greece-2014.pdf]]
 *** Relation to molecular/neutral gas
 + Tiwari:2018a have CO, etc for Lagoon region
   + Ionized gas is at negative velocities with respect to CO
@@ -109,8 +111,8 @@ See
 *** Larger scale patterns in Orion 
 + Haenel:1987a have maps at arcmin scale for whole nebula
 + [ ] Could extend velocity statistics for Orion by combining this with the Arthur:2016a Garcia-Diaz:2008a data
-
-
+*** Extragalactic HII regions
++ Look at data like in Moiseev:20015a
 ** Papers for Mariano
 + Damiani 2017 Lagoon
   + https://www.dropbox.com/s/xzouvpragh86bke/Damiani2017b-0.pdf?dl=0

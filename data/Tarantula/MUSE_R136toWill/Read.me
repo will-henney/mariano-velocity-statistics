@@ -1,0 +1,17 @@
+Extintion.fits                    => Extinction map  
+Density.fits                      => Electronic density
+Temperature_NII.fits              => Electronic temperature. Note, as mentioned in the paper, that it was calculated using faint lines of NII. That 
+									 makes the map noisy, be careful with any over-interpretation.  
+
+GAUS_Ha6562.8_060_Will.fits       => Parameters of Ha Gauss modeling.
+GAUS_NII6583.45_060_Will.fits     => Parameters of NII Gauss modeling.
+
+
+The two Gauss modeling .fits files have four extensions:
+[0] => A General header, no data, with the MUSE configuration and observing details.
+[1] => Intensity of the Gauss fit. 
+[2] => Velocity map extracted from the Gauss fit.
+[3] => Sigma, no FWHM, of the Gauss fit.
+
+The astrometry in the header should be fine, but let me know if you find any kind of small shift of several pixels.
+
