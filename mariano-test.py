@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
 # ---
 # jupyter:
-#   jupytext_format_version: '1.2'
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.4'
+#       jupytext_version: 1.1.7
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
-#   language_info:
-#     codemirror_mode:
-#       name: ipython
-#       version: 3
-#     file_extension: .py
-#     mimetype: text/x-python
-#     name: python
-#     nbconvert_exporter: python
-#     pygments_lexer: ipython3
-#     version: 3.6.3
 # ---
 
 # All attempts to load from the URL have failed.  I will try to download the data locally first
@@ -75,11 +70,9 @@ sns.pairplot(df,
 #
 # It might be worth filtering these out, since the separation into blue and red components may not be reliable
 
-# + {"scrolled": true}
 mask = df['Hasigmar'] > 35.0
 df = df[~mask]
 df
-# -
 
 df.dropna(inplace=True)
 
@@ -149,7 +142,7 @@ def combine_moments(f1, v1, s1, f2, v2, s2, return_skew=False):
         return f, v, s, skew
     else:
         return f, v, s
-    
+
 
 fHa, vHa, sHa, gHa = combine_moments(
     df.HaNr, df.HaRVr, df.Hasigmar, 
@@ -389,7 +382,7 @@ df2 = df1.copy()
 pairs = pd.merge(df1, df2, on='_key', suffixes=('', '_')).drop('_key', 1)
 pairs.index = pd.MultiIndex.from_product((df1.index, df2.index))
 
-pairs.head()
+pairs.info()
 
 # Add new columns for differences in coordinates (convert to arcsec) and velocities.
 
@@ -402,55 +395,57 @@ pairs.loc[:, 'dV2'] = pairs.dV**2
 pairs.loc[:, 'log_dV2'] = np.log10(pairs.dV**2)
 pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
 
-# Only keep rows with $\Delta > 0$ in RA and Dec, so that we cut out the repeated points. 
+# Only keep rows with $\Delta > 0$ in RA, so that we cut out the repeated points. 
 
-pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
+upairs = pairs[(pairs.dRA > 0.0)]
 
-pairs.head()
+upairs.head()
 
-pairs.describe()
+upairs.describe()
 
-pairs.corr()
+upairs.corr()
 
-mask = (pairs.log_s > 0.0) & (pairs.log_dV2 > -3)
-ax = sns.jointplot(x='log_s', y='dV', data=pairs[mask], alpha=0.2, s=1, edgecolor='none')
+mask = (upairs.log_s > 0.0) & (upairs.log_dV2 > -3)
+ax = sns.jointplot(x='log_s', y='dV', data=upairs[mask], alpha=0.1, s=1, edgecolor='none')
 ax.fig.set_size_inches(12, 12)
 
-mask = (pairs.log_s > 0.0) & (pairs.log_dV2 > -3)
-ax = sns.jointplot(x='log_s', y='log_dV2', data=pairs[mask], alpha=0.2, s=1, edgecolor='none')
+mask = (upairs.log_s > 0.0) & (upairs.log_dV2 > -3)
+ax = sns.jointplot(x='log_s', y='log_dV2', data=upairs[mask], alpha=0.1, s=1, edgecolor='none')
 ax.fig.set_size_inches(12, 12)
 
 # That is now looking more promising.  The distributions look narrower at smaller separations.
 
 # Introduce separation classes at intervals of 0.5 dex:
 
-pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
+upairs.loc[:, 's_class'] = pd.Categorical((2*upairs.log_s + 0.5).astype('int'), ordered=True)
 
 # Merge the bottom two separation classes, since there aren't enough points to go round
 
-pairs.s_class[pairs.s_class == 0] = 1
+upairs.s_class[upairs.s_class == 0] = 1
 
 # Now look at the stats for each separation class.  The bottom one should be empty.
+
+upairs[upairs.s_class == 1]
 
 for j in range(7):
     print()
     print("s_class =", j)
-    print(pairs[pairs.s_class == j][['dV2', 'log_s']].describe())
+    print(upairs[upairs.s_class == j][['dV2', 'log_s']].describe())
 
-sig2 = pairs.dV2.mean()
+sig2 = upairs.dV2.mean()
 sig2a = 2*np.var(df1.V)
 fig, axes = plt.subplots(6, 1, figsize=(10, 15), sharex=True)
 for sclass, ax in zip(range(1, 7), axes):
-    b2mean = np.mean(pairs.dV2[pairs.s_class == sclass])
-    b2std = np.std(pairs.dV2[pairs.s_class == sclass])
-    b2mean2 = np.mean(pairs.log_dV2[pairs.s_class == sclass])
-    n = np.sum(pairs.s_class == sclass)
+    b2mean = np.mean(upairs.dV2[upairs.s_class == sclass])
+    b2std = np.std(upairs.dV2[upairs.s_class == sclass])
+    b2mean2 = np.mean(upairs.log_dV2[upairs.s_class == sclass])
+    n = np.sum(upairs.s_class == sclass)
     b2sem = b2std/np.sqrt(n)
-    smean = np.mean(10**pairs.log_s[pairs.s_class == sclass])
+    smean = np.mean(10**upairs.log_s[upairs.s_class == sclass])
     label = f"$s = {smean:.1f}''$"
     label += f", $N = {n}$"
     label += fr", $b^2 = {b2mean:.1f} \pm {b2sem:.1f}$"
-    sns.distplot(pairs.log_dV2[pairs.s_class == sclass], 
+    sns.distplot(upairs.log_dV2[upairs.s_class == sclass], 
                  norm_hist=True, kde=False, ax=ax,
                  label=label, bins=20, hist_kws=dict(range=[-3.0, 3.0])
                 )
@@ -464,8 +459,10 @@ sns.despine()
 print(f'Dotted line is 2 x sigma^2 = {sig2a:.2f}')
 
 ngroup = 500
-groups = np.arange(len(pairs)) // ngroup
-table = pairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+groups = np.arange(len(upairs)) // ngroup
+table = upairs[['s', 'dV2']].sort_values('s').groupby(groups).describe()
+
+
 fig, ax = plt.subplots(figsize=(8, 6))
 s = table[('s', 'mean')]
 e_s = table[('s', 'std')]
@@ -475,9 +472,38 @@ e_b2 = table[('dV2', 'std')]/np.sqrt(ng - 1)
 #ax.plot(s, b2, 'o')
 ax.axhline(sig2a, ls=':')
 ax.axhline(0.5*sig2a, ls=':')
-ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', alpha=0.4)
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', alpha=0.2)
+sgrid = np.logspace(1.0, 3.0)
+ax.plot(sgrid, 1.3*sgrid**(2/3), color="k", lw=0.5)
 ax.set(xscale='log', yscale='log', 
-       xlim=[10.0, 2000.0], ylim=[9.0, 150.0],
+       xlim=[10.0, 2000.0], ylim=[6.0, 100.0],
+       xlabel='separation, arcsec',
+       ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
+      )
+None
+
+# The decorrelation scale is about 80 arcsec if we define it as where $b^2 = \sigma^2$. Between 80 and 150 arcsec the structure frunction flattens as it approaches the asymptotic value of $2 \sigma^2$. 
+
+table
+
+# Try to repeat the above using robust statistics.  We change mean to median.  However, this reduces the values and means that at large scales we tend to $sigma^2$ instead of $2 \sigma^2$.  It also eliminates the break at 80 arcsec. 
+
+fig, ax = plt.subplots(figsize=(8, 6))
+s = table[('s', '50%')]
+e_s = table[('s', '75%')] - table[('s', '25%')]
+b2 = table[('dV2', '50%')]
+ng = table[('dV2', 'count')]
+e_b2_plus = (table[('dV2', '75%')] - table[('dV2', '50%')])/np.sqrt(ng - 1)
+e_b2_minus = (table[('dV2', '50%')] - table[('dV2', '25%')])/np.sqrt(ng - 1)
+e_b2 = 3*np.stack((e_b2_minus, e_b2_plus))
+#ax.plot(s, b2, 'o', color="r")
+ax.axhline(sig2a, ls=':')
+ax.axhline(0.5*sig2a, ls=':')
+ax.errorbar(s, b2, yerr=e_b2, xerr=e_s, fmt='o', color="r", alpha=0.2)
+sgrid = np.logspace(1.0, 3.0)
+ax.plot(sgrid, 0.5*sgrid**(2/3), color="k")
+ax.set(xscale='log', yscale='log', 
+       xlim=[10.0, 2000.0], ylim=[2.0, 35.0],
        xlabel='separation, arcsec',
        ylabel=r'$b^2,\ \mathrm{km^2\ s^{-2}}$'
       )
@@ -487,7 +513,7 @@ None
 #
 # Start with the blue component
 
-dfm = df[(df.Ha_dV >= 18.0) & (dfm.HaRVb > -40.0) & (dfm.HaRVb < -10.0)]
+dfm = df[(df.Ha_dV >= 18.0) & (df.HaRVb > -40.0) & (df.HaRVb < -10.0)]
 df1 = pd.DataFrame(
     {'RA': dfm.RAdeg, 'DE': dfm.DEdeg, 'V': dfm.HaRVb, '_key': 1}
 )
@@ -804,7 +830,7 @@ pairs.loc[:, 'VV_mean'] = 0.5*(pairs.V + pairs.V_)
 pairs = pairs[(pairs.dDE > 0.0) & (pairs.dRA > 0.0)]
 pairs = pairs[np.isfinite(pairs.log_dV2)].dropna()
 pairs.loc[:, 's_class'] = pd.Categorical((2*pairs.log_s + 0.5).astype('int'), ordered=True)
-pairs.s_class[pairs.s_class <= 1] = 2
+pairs.s_class[(pairs.s_class == 1) | (pairs.s_class == 0)] = 2
 pairs.groupby('s_class')[['s', 'dV2']].describe()
 
 sig2 = pairs.dV2.mean()
@@ -925,7 +951,6 @@ with sns.axes_style("whitegrid"):
     ax.set_aspect(2)
     ax.set_title('H alpha blue layer brightness')
 
-# + {"scrolled": false}
 with sns.axes_style("whitegrid"):
     fig, ax = plt.subplots(figsize=(12, 12))
     scat = ax.scatter(df.RAdeg, df.DEdeg, s=100, c=df.HaNr, cmap='gray_r', vmin=0.0, vmax=4e5)
@@ -934,7 +959,6 @@ with sns.axes_style("whitegrid"):
     ax.invert_xaxis()
     ax.set_aspect(2)
     ax.set_title('H alpha red layer brightness')
-# -
 
 def eden(R):
     """Approximate sii electron density from R=6717/6731"""

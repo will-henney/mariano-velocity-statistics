@@ -8,11 +8,11 @@
 ** Velocity maps of Carina and Lagoon
 
 + Gaia-ESO spectroscopy
-  + Damiano:2016a Carina
+  + Damiani:2016a Carina
     + 10 arcmin at 2.3 kpc = 6 pc
     + 10 arcsec = 0.1 pc
     + Can analyze blue and red components separately and together
-  + Damiano:2017b Lagoon
+  + Damiani:2017b Lagoon
     + D = 1250 pc
     + Total extent: 0.8 deg = 17 pc
 + MUSE spectroscopy
@@ -112,7 +112,7 @@ See
 + Haenel:1987a have maps at arcmin scale for whole nebula
 + [ ] Could extend velocity statistics for Orion by combining this with the Arthur:2016a Garcia-Diaz:2008a data
 *** Extragalactic HII regions
-+ Look at data like in Moiseev:20015a
++ Look at data like in Moiseev:2015a
 ** Papers for Mariano
 + Damiani 2017 Lagoon
   + https://www.dropbox.com/s/xzouvpragh86bke/Damiani2017b-0.pdf?dl=0
