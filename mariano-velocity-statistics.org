@@ -108,6 +108,10 @@ See
   + There is the option of working with /pixel tables/, which have not been resampled
   + This might help avoid some of the artefacts seen in the velocity maps
 **** MUSE data on 30 Dor
++ This is in [[file:data/Tarantula/MUSE_R136toWill]]
++ Example of extracting coordinates for each pixel in the velocity maps is given in
+  + [[file:data/Tarantula/MUSE_R136toWill/tarantula-ipython-session-2019-10-16.py]]
+ 
 *** Larger scale patterns in Orion 
 + Haenel:1987a have maps at arcmin scale for whole nebula
 + [ ] Could extend velocity statistics for Orion by combining this with the Arthur:2016a Garcia-Diaz:2008a data
