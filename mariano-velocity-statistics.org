@@ -5,6 +5,138 @@
   + Lagoon, Carina, Tarantula
 + Compare 
 
+** Return to project 2021
+
+*** Other things to do maybe
+
+**** TODO Spatial variation in the structure function
++ Once we have found the correlation length, L_0, then we can look at the large-scale (> L_0) POS variation of the small-scale (< L_0) fluctuations.
++ In particular variation in
+  + Magnitude of fluctuations: \sigma(< L_0)
+  + Slope of structure function
+  + And even in L_0 itself
+    + Although for this, we need to be working on scales biggest than the largest local L_0
++ This should be easy to do with the pandas table method of doing the structure function, since we already have all the information - we just need to partition it up
+
+**** TODO Polarization analogy for exploring anisotropy of structure function
++ This is an old idea that I had - explained in [[file:~/Dropbox/Org/garrelt-simulations.org][file:~/Dropbox/Org/garrelt-simulations.org]]
++ Might be fun to apply to structure functions.  Could also be used on brightness fluctuations
++ I wonder if there is prior art on something similar - I imagine that the Planck people have looked at anisotropy of density structures, as compared with magnetic field
+  + Yes, I have found Planck-Collaboration:2016a
+    + Planck intermediate results. XXXII. The relative orientation between the magnetic field and structures traced by interstellar dust
+    + https://ui.adsabs.harvard.edu/abs/2016A%26A...586A.135P/abstract
+    + Section 4 explains what they did - some sort of Hessian method
+    + I still think there might be room for the Stokes parameters approach
+    + They also mention "anisotropic wavelet techniques", which might be interesting
++ We could call it /polfluctuarization/ or something!
+
+*** TODO Structure function of Tarantula
++ [2021-01-26 Tue] This is the first thing I am going to do in order to reactivate the project
++ The plan is to use it for the Javier paper, which will compare structure functions and other statistics for a range of H II regions with different sizes and luminosities
++ [X] Fix my multi-threaded strucfunc implementation
+  + This is in
+    + github: https://github.com/will-henney/muse-strucfunc
+    + local: [[file:~/Dropbox/muse-strucfunc/][file:~/Dropbox/muse-strucfunc/]]
+  + Now it works again, and faster than ever!
+    + Multi-threaded version on my laptop is now twice as fast as it ever was on iMac at work
+    + Time to calculate structure function for 400x400 array is 27.2 s
+
+#+begin_src python :tangle tarantula-strucfunc.py :eval no
+  import sys
+  from pathlib import Path
+  import json
+  import numpy as np
+  from astropy.io import fits
+  sys.path.append("../muse-strucfunc")
+  import strucfunc
+
+  datadir = Path("data/Tarantula/MUSE_R136toWill")
+
+  hdulist = fits.open(datadir / "GAUS_Ha6562.8_060_Will.fits")
+
+  n = None
+  sb = hdulist[1].data[:n, :n].astype(np.float64)
+  vv = hdulist[2].data[:n, :n].astype(np.float64)
+  ss = hdulist[3].data[:n, :n].astype(np.float64)
+
+  # Replace spurious values in the arrays
+  m = ~np.isfinite(sb*vv*ss) | (sb < 0.0) 
+  sb[m] = 0.0
+  vv[m] = np.nanmean(vv)
+  sb /= sb.max()
+
+  rslt = strucfunc.strucfunc_numba_parallel(vv, wmap=sb, dlogr=0.15)
+
+  good = (~m) & (sb > 0.001)
+  rslt["Unweighted mean velocity"] = np.mean(vv[good])
+  rslt["Unweighted sigma^2"] = np.var(vv[good])
+  v0w = rslt["Weighted mean velocity"] = np.average(vv, weights=sb)
+  rslt["Weighted sigma^2"] = np.average((vv - v0w)**2, weights=sb)
+
+
+  class MyEncoder(json.JSONEncoder):
+      def default(self, obj):
+          if isinstance(obj, np.integer):
+              return int(obj)
+          elif isinstance(obj, np.floating):
+              return float(obj)
+          elif isinstance(obj, np.ndarray):
+              return obj.tolist()
+          else:
+              return super(MyEncoder, self).default(obj)
+  jsonfilename = "tarantula-strucfunc.json"
+  with open(jsonfilename, "w") as f:
+      json.dump(rslt, fp=f, indent=3, cls=MyEncoder)
+  print(jsonfilename, end="")
+#+end_src
+
+#+begin_src sh :results file
+python tarantula-strucfunc.py
+#+end_src
+
+#+RESULTS:
+[[file:tarantula-strucfunc.json]]
+
+
+
+**** Sample results
+What we got from test with pure python version with n = 20
+#+begin_example
+{'log10 r': array([0.  , 0.15, 0.3 , 0.45, 0.6 , 0.75, 0.9 , 1.05, 1.2 ]), 'Sum dv^2': array([  286.176572  ,  1816.08667744,  4456.64384807, 10247.69199721,
+       15614.41156876, 17353.22440817, 39015.36434385, 40118.31285852,
+        2608.48845663]), 'Sum weights': array([ 27.48855598,  50.72646818, 100.8550699 , 152.64575999,
+       181.63544682, 149.66641101, 179.43422474,  99.73101336,
+        13.14206985]), 'Sum w * dv^2': array([  188.07159422,  1119.13494059,  2684.97040556,  6123.48035994,
+        8857.18554824,  9056.58693937, 18557.14879415, 17924.77263585,
+        1209.60779833]), 'N pairs': array([ 52,  98, 191, 283, 345, 301, 382, 223,  28]), 'Unweighted B(r)': array([  5.50339562,  18.53149671,  23.33321386,  36.21092579,
+        45.25916397,  57.65190833, 102.13446163, 179.90274824,
+        93.16030202]), 'Weighted B(r)': array([  6.84181426,  22.06214982,  26.62206678,  40.11562693,
+        48.76352993,  60.51182011, 103.42034147, 179.73117922,
+        92.04088944])}
+#+end_example
+
+
+**** DONE Assessing the strategies
+CLOSED: [2021-01-26 Tue 19:36]
++ So far I have had medium-size data sets, which have allowed the use of inefficient algorithms using pandas
++ Sizes of datsets
+  + Damiani:2016a Carina
+    + 866 spatial points
+  + Damiani:2017b Lagoon
+    + 1177 spatial points
+  + Castro:2018a Tarantula (30 Dor)
+    + 649 x 649 pixels => 421201 points
+    + This is 400 x what I was doing before
+  + Estimate of memory requirement to store all the pairs (assume 8 bytes per number)
+    | N points | pairs = N^2 / 2 | Memory (GB) |
+    |----------+----------------+-------------|
+    |     1000 |         500000 |      0.0037 |
+    |   421000 |    88620500000 |    660.2742 |
+    #+TBLFM: $2=$1*$1/2::$3=8 $2 / 1024**3 ; f4
+  + So that is not feasible - need to use the more efiicient algorithm.
+  + Based on my tests so far, I estimate that the numba parallel algorithm should be able to do the Tarantula structure function in 27.2 (649/400)**4 = 188.5 s, or 3 minutes
+    + *So that is fine*
+         
 ** Velocity maps of Carina and Lagoon
 
 + Gaia-ESO spectroscopy
@@ -111,7 +243,8 @@ See
 + This is in [[file:data/Tarantula/MUSE_R136toWill]]
 + Example of extracting coordinates for each pixel in the velocity maps is given in
   + [[file:data/Tarantula/MUSE_R136toWill/tarantula-ipython-session-2019-10-16.py]]
- 
+
+
 *** Larger scale patterns in Orion 
 + Haenel:1987a have maps at arcmin scale for whole nebula
 + [ ] Could extend velocity statistics for Orion by combining this with the Arthur:2016a Garcia-Diaz:2008a data
