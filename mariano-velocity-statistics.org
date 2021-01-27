@@ -99,6 +99,120 @@ python tarantula-strucfunc.py
 
 
 
+**** Graph of Tarantula structure function
+
+#+begin_src python :results file :return figfile
+  import json
+  import numpy as np
+  from matplotlib import pyplot as plt
+  import seaborn as sns
+
+  def bfunc(r, r0, sig2, m):
+      "Theoretical structure function"
+      C = 1.0 / (1.0 + (r/r0)**m)
+      return 2.0*sig2*(1 - C)
+
+  data = json.load(open("tarantula-strucfunc.json"))
+
+  sns.set_color_codes()
+  fig, ax = plt.subplots(figsize=(5, 5))
+
+  figfile = "tarantula-strucfunc-plot.pdf"
+
+  pixscale = 0.2 # arcsec
+  pixscale *= 0.242               # parsec
+  r = pixscale * 10**np.array(data["log10 r"])
+  B = np.array(data["Unweighted B(r)"])
+  sig2 = data["Unweighted sigma^2"]
+  B_w = np.array(data["Weighted B(r)"])
+  sig2_w = data["Weighted sigma^2"]
+
+  rgrid = pixscale * np.logspace(0.0, 2.7)
+  r0 = np.interp(sig2, B, r)
+  m = 1.22
+  flabel = rf"$m = {m:.2f}$, $r_0 = {r0:.1f}$ pc, $\sigma^2 = {sig2:.0f}$ (km/s)$^2$"
+  ax.fill_between(
+      rgrid,
+      bfunc(rgrid, r0, sig2, m - 0.1),
+      bfunc(rgrid, r0, sig2, m + 0.1),
+      color="k", alpha=0.1,
+  )
+  ax.plot(rgrid, bfunc(rgrid, r0, sig2, m), color="k", label=flabel)
+
+  ax.plot(r, B, 'o', label="Unweighted")
+  ax.plot(r, B_w, 'o', ms=3, alpha=0.5, label="Weighted")
+
+
+  melnick_r = np.array([2.5, 7.5, 12.5, 17.5, 22.5, 27.5])
+  melnick_B = np.array([2.0, 2.1, 2.2, 2.2, 2.25, 2.25]) * 18.2**2
+  ax.plot(melnick_r, melnick_B, 's', label="Melnick+ (2020)", color="y", zorder=-10)
+
+
+  ax.axhline(sig2, color="k", ls="--")
+  ax.axhline(sig2_w, color="r", ls=":")
+  ax.legend(title="30 Doradus")
+  ax.set(
+      xscale = "log",
+      yscale = "log",
+      xlabel = "Separation, pc",
+      ylabel = r"$B(r)$, (km/s)$^2$",
+  )
+  fig.tight_layout()
+  sns.despine()
+  fig.savefig(figfile)
+  fig.savefig(figfile.replace(".pdf", ".jpg"))
+#+end_src
+
+#+RESULTS:
+[[file:tarantula-strucfunc-plot.pdf]]
+
+
+
+Same but in parsec.
+
+Distance = 50 kpc => 1 arcsec = 0.242 pc
+
+#+begin_src python :results file :return figfile
+  import json
+  import numpy as np
+  from matplotlib import pyplot as plt
+  import seaborn as sns
+
+  data = json.load(open("tarantula-strucfunc.json"))
+
+  fig, ax = plt.subplots(figsize=(5, 5))
+
+  figfile = "tarantula-strucfunc-plot-parsec.jpg"
+
+  pixscale = 0.2                  # arcsec
+  pixscale *= 0.242               # parsec
+  r = pixscale * 10**np.array(data["log10 r"])
+  B = np.array(data["Unweighted B(r)"])
+  sig2 = data["Unweighted sigma^2"]
+  B_w = np.array(data["Weighted B(r)"])
+  sig2_w = data["Weighted sigma^2"]
+
+  ax.plot(r, B, 'o')
+  ax.plot(r, B_w, 'o')
+  ax.axhline(sig2, color="k", ls="--")
+  ax.axhline(sig2_w, color="r", ls=":")
+  ax.set(
+      xscale = "log",
+      yscale = "log",
+      xlabel = "Separation, parsec",
+      ylabel = r"$B(r)$, (km/s)$^2$",
+  )
+  fig.tight_layout()
+  sns.despine()
+  fig.savefig(figfile)
+  fig.savefig(figfile.replace(".jpg", ".pdf"))
+#+end_src
+
+#+RESULTS:
+[[file:tarantula-strucfunc-plot-parsec.jpg]]
+
+
+
 **** Sample results
 What we got from test with pure python version with n = 20
 #+begin_example
