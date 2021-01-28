@@ -6,19 +6,33 @@ from astropy.io import fits
 sys.path.append("../muse-strucfunc")
 import strucfunc
 
+try:
+    LINEID = sys.argv[1]
+except:
+    LINEID = "ha"
+
+fitsfilename = {
+    "ha": "GAUS_Ha6562.8_060_Will.fits",
+    "nii": "GAUS_NII6583.45_060_Will.fits",
+}
 datadir = Path("data/Tarantula/MUSE_R136toWill")
 
-hdulist = fits.open(datadir / "GAUS_Ha6562.8_060_Will.fits")
+hdulist = fits.open(datadir / fitsfilename[LINEID])
 
 n = None
 sb = hdulist[1].data[:n, :n].astype(np.float64)
 vv = hdulist[2].data[:n, :n].astype(np.float64)
 ss = hdulist[3].data[:n, :n].astype(np.float64)
 
-m = ~np.isfinite(sb*vv*ss) | (sb < 0.0) 
+# Replace spurious values in the arrays
+m = ~np.isfinite(sb*vv*ss) | (sb < 0.0)
+if LINEID == "nii":
+    # Remove bad patch from the [N II] map
+    m = m | (sb > 6e4) 
 sb[m] = 0.0
 vv[m] = np.nanmean(vv)
 sb /= sb.max()
+
 
 rslt = strucfunc.strucfunc_numba_parallel(vv, wmap=sb, dlogr=0.15)
 
@@ -39,7 +53,8 @@ class MyEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(MyEncoder, self).default(obj)
-jsonfilename = "tarantula-strucfunc.json"
+
+jsonfilename = f"tarantula-strucfunc-{LINEID}.json"
 with open(jsonfilename, "w") as f:
     json.dump(rslt, fp=f, indent=3, cls=MyEncoder)
 print(jsonfilename, end="")

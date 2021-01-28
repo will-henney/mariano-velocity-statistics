@@ -50,9 +50,18 @@
   sys.path.append("../muse-strucfunc")
   import strucfunc
 
+  try:
+      LINEID = sys.argv[1]
+  except:
+      LINEID = "ha"
+
+  fitsfilename = {
+      "ha": "GAUS_Ha6562.8_060_Will.fits",
+      "nii": "GAUS_NII6583.45_060_Will.fits",
+  }
   datadir = Path("data/Tarantula/MUSE_R136toWill")
 
-  hdulist = fits.open(datadir / "GAUS_Ha6562.8_060_Will.fits")
+  hdulist = fits.open(datadir / fitsfilename[LINEID])
 
   n = None
   sb = hdulist[1].data[:n, :n].astype(np.float64)
@@ -60,10 +69,14 @@
   ss = hdulist[3].data[:n, :n].astype(np.float64)
 
   # Replace spurious values in the arrays
-  m = ~np.isfinite(sb*vv*ss) | (sb < 0.0) 
+  m = ~np.isfinite(sb*vv*ss) | (sb < 0.0)
+  if LINEID == "nii":
+      # Remove bad patch from the [N II] map
+      m = m | (sb > 6e4) 
   sb[m] = 0.0
   vv[m] = np.nanmean(vv)
   sb /= sb.max()
+
 
   rslt = strucfunc.strucfunc_numba_parallel(vv, wmap=sb, dlogr=0.15)
 
@@ -84,7 +97,8 @@
               return obj.tolist()
           else:
               return super(MyEncoder, self).default(obj)
-  jsonfilename = "tarantula-strucfunc.json"
+
+  jsonfilename = f"tarantula-strucfunc-{LINEID}.json"
   with open(jsonfilename, "w") as f:
       json.dump(rslt, fp=f, indent=3, cls=MyEncoder)
   print(jsonfilename, end="")
@@ -112,12 +126,12 @@ python tarantula-strucfunc.py
       C = 1.0 / (1.0 + (r/r0)**m)
       return 2.0*sig2*(1 - C)
 
-  data = json.load(open("tarantula-strucfunc.json"))
+  data = json.load(open("tarantula-strucfunc-ha.json"))
 
   sns.set_color_codes()
   fig, ax = plt.subplots(figsize=(5, 5))
 
-  figfile = "tarantula-strucfunc-plot.pdf"
+  figfile = "tarantula-strucfunc-plot-ha.pdf"
 
   pixscale = 0.2 # arcsec
   pixscale *= 0.242               # parsec
@@ -127,6 +141,7 @@ python tarantula-strucfunc.py
   B_w = np.array(data["Weighted B(r)"])
   sig2_w = data["Weighted sigma^2"]
 
+  # Plot fit to unweighted strucfunc
   rgrid = pixscale * np.logspace(0.0, 2.7)
   r0 = np.interp(sig2, B, r)
   m = 1.22
@@ -139,8 +154,24 @@ python tarantula-strucfunc.py
   )
   ax.plot(rgrid, bfunc(rgrid, r0, sig2, m), color="k", label=flabel)
 
+  # Plot points from unweighted strucfunc
   ax.plot(r, B, 'o', label="Unweighted")
-  ax.plot(r, B_w, 'o', ms=3, alpha=0.5, label="Weighted")
+
+
+  # Plot fit to weighted strucfunc
+  r0_w = np.interp(sig2_w, B_w, r)
+  m_w = 1.30
+  flabel_w = rf"$m = {m_w:.2f}$, $r_0 = {r0_w:.1f}$ pc, $\sigma^2 = {sig2_w:.0f}$ (km/s)$^2$"
+  ax.fill_between(
+      rgrid,
+      bfunc(rgrid, r0_w, sig2_w, m_w - 0.1),
+      bfunc(rgrid, r0_w, sig2_w, m_w + 0.1),
+      color="k", alpha=0.05,
+  )
+  ax.plot(rgrid, bfunc(rgrid, r0_w, sig2_w, m_w), lw=0.5, color="k", alpha=0.5, label=flabel_w)
+
+  # Plot points from weighted strucfunc
+  ax.plot(r, B_w, 'o', ms=3, alpha=0.5, label="Flux-weighted")
 
 
   melnick_r = np.array([2.5, 7.5, 12.5, 17.5, 22.5, 27.5])
@@ -150,10 +181,11 @@ python tarantula-strucfunc.py
 
   ax.axhline(sig2, color="k", ls="--")
   ax.axhline(sig2_w, color="r", ls=":")
-  ax.legend(title="30 Doradus")
+  ax.legend(title=r"30 Doradus H$\alpha$")
   ax.set(
       xscale = "log",
       yscale = "log",
+      ylim  = [0.5, 1500],
       xlabel = "Separation, pc",
       ylabel = r"$B(r)$, (km/s)$^2$",
   )
@@ -164,8 +196,94 @@ python tarantula-strucfunc.py
 #+end_src
 
 #+RESULTS:
-[[file:tarantula-strucfunc-plot.pdf]]
+[[file:tarantula-strucfunc-plot-ha.pdf]]
 
+
+Same but for the [N II] line
+
+#+begin_src python :results file :return figfile
+  import json
+  import numpy as np
+  from matplotlib import pyplot as plt
+  import seaborn as sns
+
+  def bfunc(r, r0, sig2, m):
+      "Theoretical structure function"
+      C = 1.0 / (1.0 + (r/r0)**m)
+      return 2.0*sig2*(1 - C)
+
+  data = json.load(open("tarantula-strucfunc-nii.json"))
+
+  sns.set_color_codes()
+  fig, ax = plt.subplots(figsize=(5, 5))
+
+  figfile = "tarantula-strucfunc-plot-nii.pdf"
+
+  pixscale = 0.2 # arcsec
+  pixscale *= 0.242               # parsec
+  r = pixscale * 10**np.array(data["log10 r"])
+  B = np.array(data["Unweighted B(r)"])
+  sig2 = data["Unweighted sigma^2"]
+  B_w = np.array(data["Weighted B(r)"])
+  sig2_w = data["Weighted sigma^2"]
+
+  rgrid = pixscale * np.logspace(0.0, 2.7)
+
+  # Plot fit to unweighted strucfunc
+  r0 = np.interp(sig2, B, r)
+  m = 0.95
+  flabel = rf"$m = {m:.2f}$, $r_0 = {r0:.1f}$ pc, $\sigma^2 = {sig2:.0f}$ (km/s)$^2$"
+  ax.fill_between(
+      rgrid,
+      bfunc(rgrid, r0, sig2, m - 0.1),
+      bfunc(rgrid, r0, sig2, m + 0.1),
+      color="k", alpha=0.1,
+  )
+  ax.plot(rgrid, bfunc(rgrid, r0, sig2, m), color="k", label=flabel)
+
+  # Plot points from unweighted strucfunc
+  ax.plot(r, B, 'o', label="Unweighted")
+
+
+  # Plot fit to weighted strucfunc
+  r0_w = np.interp(sig2_w, B_w, r)
+  m_w = 1.05
+  flabel_w = rf"$m = {m_w:.2f}$, $r_0 = {r0_w:.1f}$ pc, $\sigma^2 = {sig2_w:.0f}$ (km/s)$^2$"
+  ax.fill_between(
+      rgrid,
+      bfunc(rgrid, r0_w, sig2_w, m_w - 0.1),
+      bfunc(rgrid, r0_w, sig2_w, m_w + 0.1),
+      color="k", alpha=0.05,
+  )
+  ax.plot(rgrid, bfunc(rgrid, r0_w, sig2_w, m_w), lw=0.5, color="k", alpha=0.5, label=flabel_w)
+
+  # Plot points from weighted strucfunc
+  ax.plot(r, B_w, 'o', ms=3, alpha=0.5, label="Flux-weighted")
+
+
+  melnick_r = np.array([2.5, 7.5, 12.5, 17.5, 22.5, 27.5])
+  melnick_B = np.array([2.0, 2.1, 2.2, 2.2, 2.25, 2.25]) * 18.2**2
+  ax.plot(melnick_r, melnick_B, 's', label="Melnick+ (2020)", color="y", zorder=-10)
+
+
+  ax.axhline(sig2, color="k", ls="--")
+  ax.axhline(sig2_w, color="r", ls=":")
+  ax.legend(title="30 Doradus [N II]")
+  ax.set(
+      xscale = "log",
+      yscale = "log",
+      ylim  = [0.5, 1500],
+      xlabel = "Separation, pc",
+      ylabel = r"$B(r)$, (km/s)$^2$",
+  )
+  fig.tight_layout()
+  sns.despine()
+  fig.savefig(figfile)
+  fig.savefig(figfile.replace(".pdf", ".jpg"))
+#+end_src
+
+#+RESULTS:
+[[file:tarantula-strucfunc-plot-nii.pdf]]
 
 
 Same but in parsec.
@@ -250,7 +368,17 @@ CLOSED: [2021-01-26 Tue 19:36]
   + So that is not feasible - need to use the more efiicient algorithm.
   + Based on my tests so far, I estimate that the numba parallel algorithm should be able to do the Tarantula structure function in 27.2 (649/400)**4 = 188.5 s, or 3 minutes
     + *So that is fine*
-         
+** Comparison between regions
+|          |   Q_H |   n |   R_S, pc | L, pc | \ell_0, pc |   \sigma |   m | D, kpc |
+|----------+------+-----+----------+-------+--------+-----+-----+--------|
+| Orion    | 1e49 | 1e4 |    0.101 |   0.6 |   0.05 | 3.1 | 1.1 |    0.4 |
+| M8 small | 2e49 | 600 |    0.833 |    20 |    1.3 |   3 | 0.8 |    1.3 |
+| M8 large | 2e49 |  60 |    3.868 |    20 |      6 |   4 |   1 |    1.3 |
+| Carina   | 2e51 | 500 |    4.368 |    15 |    0.5 |   4 | 0.7 |    2.0 |
+| 30 Dor   |    1 |   1 | 2.18e-15 |       |        |     |     |     50 |
+| NGC 640  |    1 |   1 | 2.18e-15 |       |        |     |     |        |
+#+TBLFM: $4=($2 / 4 $pi 2.6e-13 $3**2 )**(1/3) / $pc;f3
+
 ** Velocity maps of Carina and Lagoon
 
 + Gaia-ESO spectroscopy
