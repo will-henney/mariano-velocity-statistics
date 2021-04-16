@@ -459,6 +459,21 @@ CLOSED: [2021-01-26 Tue 19:36]
 
 #+RESULTS:
 [[file:tarantula-I-sigma-hist-nii.png]]
+** LOS versus POS widths
++ Carina
+  + Line widths typically have \sigma = 15 km/s, but this includes the thermal contribution.
+  + thermal \sigma is 9 km/s => non-thermal is 12 km/s
+  + For individual components, we have 5.6 km/s, so we have \sigma(LOS) = 2 \sigma(POS), as in Orion
++ 30 Doradus
+  + We have \sigma = 55 km/s for H alpha at highest brightness
+  + For Orion with the same instrument we have 48.5 km/s
+  + Subtracting in quadrature gives 26 km/s for LOS \sigma
+    + Note however, that 15 km/s is what Melnick et al found for the same region
+    + I need to check this with the original data
+  + For POS \sigma we have sqrt(252) = 16 km/s
+  + So, we have LOS and POS \sigma being the same if we beleieve Melnick, although the MUSE widths suggest LOS \sigma is 2 x higher
++ Orion
++ M8
 
 ** Comparison between regions
 |             |     Q_H |  L(Ha) |    SFR |   n | R_S, pc | L, pc |   \Sigma_SFR | \ell_0, pc |   \sigma |    m | D, kpc |
