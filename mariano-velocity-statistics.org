@@ -606,7 +606,69 @@ CLOSED: [2021-01-26 Tue 19:36]
 
 #+RESULTS:
 [[file:tarantula-I-sigma-hist-ha-depth.png]]
+** I-\sigma-v plots for Orion
++ It turns out that I already did this for \sigma and u in Fig. 10, 11, 12 of Arthur:2016a
++ But I still need to combine it with I
+** Two-layer hypothesis
++ This is a simple model to simultaneously explain certain aspects of the following:
+  1. I-\sigma-v diagrams
+  2. PDF and power spectra of surface brightness
+  3. Structure functions
++ The idea is that we have N independent emission layers
+  + Each layer has a constant velocity
+  + Each layer has a log-normal distribution of emission measure
+  + And some from of spatial power spectrum
+    + We can use some way of automatically generating the surface brightness field
+    + There is what I did for the appendix of the Orion paper
+    + Or there is the Brownian motion method of Miville-Deschenes:2003a
+      + This has adjustable power laws for the density and velocity fields
++ We then make specific predictions:
+  1. For the I-\sigma-v behavior
+     - This is very simple and doesn't depend on the spatial power spectrum
+     - We can calculate mixing lines between two pure states
+     - For \sigma-v, we have different v_1, v_2, but use the same \sigma_1, \sigma_2 = \sigma.   Then we use the equation in Garcia-Diaz:2008a to calculate the combined \sigma as a function of the surface brightness ratio S_1/S_2
+       - This will be a crescent, with apex when S_1/S_2 = 1, which is maximum \sigma and a velocity half way between v_1 and v_2
+     - Then we calculate the distribution of S_1/S_2 in terms of the widths of the log-normal distributions
+       - For narrow distributions, we will get everything concentrated around S_1/S_2 = 1
+       - But for sufficiently broad distributions, things will be more concentrated at the ends: either small or large S_1/S_2, so we should get concentrated drops at (v_1, \sigma_1) and (v_2, \sigma_2)
+  2. PDF and spatial power-spectra of EM  are tuned to observations, so they are not a test
+  3. Structure function can be simulated. Presumably it will have a break at same length as the power spectrum
+*** Plan of action for two-layer tests
+1. [ ] Calculate surface brightness PDFs from the observations
+   - Do this for 30 Dor and for Orion
+   - Start off with the MUSE maps for 30 Dor
+   - We already have results for Orion, but we could extend them to larger scales using the orion treasury images of the entire nebula
+** Gravity as cause for the line widths
 
++ In cases where gravity is dominant, then all components should show the same velocity dispersion:
+  + Ionized gas
+  + Molecular gas
+  + Stars
+  + *This is a strong testable prediction*
+    + In Orion we see that the 1-d velocity dispersion of the stars is about 3 km/s I think, which is less than the velocity dispersion of the gas
+    + Also, the velocity dispersion of the molecular gas is smaller
+      + [ ] We should calculate structure function from the Kong observations
+  + *What about in 30 Dor?*
+    + [ ] Look at molecular gas kinematics in 30 Dor
+      + We have the Indebetouw:2020x observations of the 30 Dor-10 molecular cloud
+        + The surface of this is the bright Ha emission at the N edge of the MUSE maps
+        + The mean velocity is shown in Figure 6
+      + But it would be good to find some larger scale velocity maps
+      + Johan
+    + H I statistics
+      + Szotkowski:2019a calculate the intensity structure function and spatial power spectrum, but they do not calculate the velocity structure function, although they do use the VCA method.  They also calculate the spatial variation of the power law slopes
+    + Stars do not seem to follow
++ If dynamical relaxation has occurred, then the structure function should be flat
+  + So a steep structure function below the correlation scale is evidence against dynamical relaxation
+  + Ha:2021u find that ONC stars are relaxed (flat structure function)
+    + But they find evidence for power law at large scale for other clusters in Orion
+    + Although the scales they are working at are far larger than the ones we have studied before
+  + Although I suppose that we could have injection scale being the average separation between stars
+    + And then turbulent cascade at smaller scales
+** Structure functions and spatial power laws
++ Structure functions of molecular gas
+  + Henshaw:2020t
+  + Ubiquitous velocity fluctuations throughout the molecular interstellar medium
 ** LOS versus POS widths
 + Carina
   + Line widths typically have \sigma = 15 km/s, but this includes the thermal contribution.
