@@ -637,7 +637,13 @@ CLOSED: [2021-01-26 Tue 19:36]
 1. [ ] Calculate surface brightness PDFs from the observations
    - Do this for 30 Dor and for Orion
    - Start off with the MUSE maps for 30 Dor
+     - [X] See jupyter notebook for 30 Dor
    - We already have results for Orion, but we could extend them to larger scales using the orion treasury images of the entire nebula
+** General thoughts on the strucfuncs, spatial power spectrum, delta variance, etc
++ The delta variance gives something that is very similar to the structure function for the velocity
+  + We see a resing curve at small separations,
++ [ ] How to interpret the y-axis in the delta variance plots?
+  + It is somehow related to the variance at each scale, but the must be some constants involved since the un-normalised velocity structure function for 30 Dor saturates at 2 \sigma^2 = 500 km^2/s^2, whereas \sigma^2_\Delta from the delta variance reaches about 20 km^2/s^2 
 ** Gravity as cause for the line widths
 
 + In cases where gravity is dominant, then all components should show the same velocity dispersion:

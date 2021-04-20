@@ -1,0 +1,320 @@
+# -*- coding: utf-8 -*-
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:light
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.11.1
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
+# # Analysis of Tarantula surface brightness fluctuations
+
+from pathlib import Path
+import numpy as np
+from astropy.io import fits
+import astropy.units as u
+from matplotlib import pyplot as plt
+import turbustat.statistics as tss
+
+# Load moment data for Ha line.
+
+fitsfilename = {
+    "ha": "GAUS_Ha6562.8_060_Will.fits",
+    "nii": "GAUS_NII6583.45_060_Will.fits",
+}
+datadir = Path("data/Tarantula/MUSE_R136toWill")
+hdulist = fits.open(datadir / fitsfilename["ha"])
+hdulist.info()
+
+
+sb = hdulist[1].data
+
+# ## PDF and spatial power spectrum
+
+# ### Find PDF of Hα surface brightness
+#
+# Normalize the surface brightness map by its mean. 
+
+hdulist[1].data /= np.nanmean(hdulist[1].data)
+
+# First, we try the unweighted PDF.
+
+pdf_mom0 = tss.PDF(hdulist[1], min_val=0.0, bins=None)
+
+plt.figure(figsize=(12, 6))
+pdf_mom0.run(verbose=True)
+
+# Despite the appearances, this is a log-normal PDF (dashed line) that is fitted to the observations (blue solid line). The reason that it looks a bit strange in the left-hand plot is that they are using uniform bin sizes on a linear scale. This gives a $x^{-1}$ term in the PDF of $x$, which skews the sistribution to the left.  Also they are plotting it on a linear scale in $x$, but a logarithmic scale in the PDF ($y$-axis).  This is probably because star-formation people are most interested in the high-density end of the PDF, which is what this emphasizes. 
+#
+# The cumulatitive distribution function plot (right hand panel) is better suited to our purposes. Looking at the fit, it is clearly not optimised to the peak of the PDF (CDF of 0.5).  We could do a better "fit" to this part by using the median and the inter-quartile range to uniquely determine the $\mu$ and $\sigma$, respectively, of the log-normal. This would move the $\mu$ slightly to the right and possibly reduce the $\sigma$ slightly.
+#
+# Anyway, using the fitted PDF, the peak is at 0.72 and the $\sigma$ is 1.1. 
+
+# Now I look at the scipy.stats implementation of the log-normal PDF.  The docs are very confusing, but I think I have sorted it out.
+
+import seaborn as sns
+sns.set_color_codes()
+sns.set_context("talk")
+
+from scipy.stats import lognorm
+
+LN = lognorm(s=1.0, scale=np.exp(1.0))
+
+x = np.logspace(-2.0, 2.0, 300)
+fig, ax = plt.subplots()
+ax.plot(x, LN.pdf(x))
+ax.set(xscale="log")
+
+# Now I replot the PDF myself, using the empirical PDF and the model fit that turbustat has fuond.
+
+fig, ax = plt.subplots()
+s, scale = pdf_mom0.model_params
+LN = lognorm(s=s, scale=scale)
+x = pdf_mom0.bins
+ax.plot(x, x*pdf_mom0.pdf)
+ax.plot(x, x*LN.pdf(x))
+ax.set(
+    xlabel="intensity",
+    ylabel="PDF",
+    xscale="log",
+    ylim=[0, None],
+);
+
+pdf_mom0.model_params
+
+# I have multiplied the PDF by $x$ to put it in the form per uniform logarithmic interval.  This is the only way that it actually looks like a Gaussian. 
+
+fig, ax = plt.subplots()
+ax.plot(x, x*pdf_mom0.pdf)
+ax.plot(x, x*LN.pdf(x))
+ax.set(
+    xlabel="intensity",
+    ylabel="PDF",
+    xscale="log",
+    yscale="log",
+    ylim=[1e-3, 1.0],
+);
+
+# Then I plot the same thing on a log-log scale.  When you compare this with molecular hydrogen column density PDFs, such as in Dib:2020m, it doesn't look very impressive.  They have an excellent fit to a log-normal PDF on the low side, down to about 1e-5 in the histogram, whereas we have a much worse fit. 
+
+# #### Weighted PDF using turbustats
+#
+# Next, we fit the weighted PDF, using the brightness itself as weight.  So the result is no longer the fraction of the POS area that has each intensity.  But instead is the fraction of the total flux that has that intensity.
+
+wpdf_mom0 = tss.PDF(hdulist[1], min_val=0.0, bins=np.logspace(-2.4, 1.6, 50), weights=hdulist[1].data)
+plt.figure(figsize=(12, 6))
+wpdf_mom0.run(verbose=True)
+
+# And plot the weighted pdf on a log scale as above:
+
+fig, ax = plt.subplots()
+s, scale = wpdf_mom0.model_params
+LN = lognorm(s=s, scale=scale)
+x = wpdf_mom0.bins
+ax.plot(x, x*wpdf_mom0.pdf)
+ax.plot(x, x*LN.pdf(x))
+ax.set(
+    xlabel="intensity",
+    ylabel="PDF",
+    xscale="log",
+    ylim=[0, None],
+);
+
+wpdf_mom0.model_params
+
+# This is a suprising appearance for the weighted version.  It has a larger width than the unweighted one.  **I don't understand what turbustats means by weighted in this context, so we can't rely on this**
+
+# #### Calculate the PDF by other means
+
+# First, look at the weighted PDF using seaborn:
+
+m = np.isfinite(sb) & (sb > 0.0)
+sns.histplot(x=np.log(sb[m]), kde=False, weights=sb[m].astype(float), bins=100)
+
+# So that is very different from the turbustats version, and looks more convincing. Now, we check this by doing the same thing by hand with `np.histogram`:
+
+H, edges = np.histogram(np.log(sb[m]), weights=sb[m], bins=100, range=[-4.0, 2.5], density=True)
+
+fig, ax = plt.subplots()
+centers = 0.5*(edges[:-1] + edges[1:])
+ax.plot(centers, H)
+LN = lognorm(s=0.75,scale=1.8)
+ax.plot(centers, np.exp(centers)*LN.pdf(np.exp(centers)))
+ax.set(
+    xlabel="$\ln (S/S_0)$",
+    ylabel="PDF",
+#    yscale="log",
+#    ylim=[1e-3, 1.0],
+)
+
+
+# That is exactly the same as the seaborn version, and makes perfect sense: the distribution is pulled up at the high brightness because of the brightness weighting.  Note that the log-normal fit is by eye.  
+#
+# Now we look at the CDF:
+
+# +
+cdf = np.cumsum(H)*(centers[1] - centers[0])
+fit = np.exp(centers)*LN.pdf(np.exp(centers))
+cdf_fit = np.cumsum(fit)*(centers[1] - centers[0])
+
+fig, ax = plt.subplots()
+ax.plot(centers, cdf)
+ax.plot(centers, cdf_fit)
+ax.set(
+    xlabel="$\ln (S/S_0)$",
+    ylabel="CDF",
+#    yscale="log",
+#    ylim=[1e-3, 1.0],
+)
+# -
+
+# So that looks reasonable.  The log-normal fit is not very realistic, since it doesn't account for the skewness of the distribution.  The observed distribution has an excess at low brightness and a deficit at high brightness, as compared with the fit. 
+
+fig, ax = plt.subplots()
+ax.plot(centers, cdf/(1 - cdf))
+ax.plot(centers, cdf_fit/(1 - cdf_fit))
+ax.set(
+    xlabel="$\ln (S/S_0)$",
+    ylabel="CDF / (1 $-$ CDF)",
+    yscale="log",
+    ylim=[1e-3/3, 3e3],
+)
+
+# This is an experiment with plotting $\mathrm{CDF}/(1 - \mathrm{CDF})$ on a log scale, which gives better visibility to the low and high-intensity wings and emphasizes the disagreement with the log-normal model. We have to be careful with interpreting the CDF graphs, since the sense of a deviation flips when you go past the half-way point.  The blue line is above the orange line at high and low intensities, but this only indicates an excess at low intensities.  At high intensities it indicates a *deficit* (observations below model). 
+
+# #### Conclusions on the weighted PDF
+#
+# The width of the PDF is $\sigma \approx 0.75$, which is 50% larger than we found in Orion. 
+
+# ### Spatial power spectrum of Hα surface brightness
+
+pspec = tss.PowerSpectrum(hdulist[1])
+
+pspec.run(verbose=True)
+
+plt.figure(figsize=(14, 8))
+pspec.plot_fit(show_2D=True)
+
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.plot(pspec.freqs, pspec.freqs**3 * pspec.ps1D, ".")
+ax.set(
+    xscale="log", yscale="log",
+)
+
+
+
+plt.figure(figsize=(14, 8))
+pspec.run(
+    verbose=True, 
+    apodize_kernel="tukey", alpha=0.3,
+    fit_2D=False, 
+    low_cut=0.003/ u.pix,
+    high_cut=0.2/ u.pix,
+    fit_kwargs={"brk": 0.02 / u.pix, "log_break": False},
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.plot(pspec.freqs, pspec.freqs**3 * pspec.ps1D, ".")
+ax.set(
+    xscale="log", yscale="log",
+)
+
+pspec_v = tss.PowerSpectrum(hdulist[2])
+
+plt.figure(figsize=(14, 8))
+pspec_v.run(
+    verbose=True, 
+    apodize_kernel="splitcosinebell", alpha=0.5, beta=0.2,
+    fit_2D=False, 
+    low_cut=0.008/ u.pix,
+    high_cut=0.1/ u.pix,
+    #fit_kwargs={"brk": 0.02 / u.pix, "log_break": False},
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+pspec_v.freqs[0] = np.nan
+ax.plot(pspec_v.freqs, pspec_v.freqs**3 * pspec_v.ps1D, ".", color="r")
+ax.set(
+    xscale="log", yscale="log",
+)
+
+hdulist_n2 = fits.open(datadir / fitsfilename["nii"])
+
+m = hdulist_n2[1].data > 6e4
+hdulist_n2[1].data[m] = np.median(hdulist_n2[1].data)
+
+pspec_n2 = tss.PowerSpectrum(hdulist_n2[1])
+
+plt.figure(figsize=(14, 8))
+pspec_n2.run(
+    verbose=True, 
+    apodize_kernel="tukey", alpha=0.3,
+    fit_2D=False, 
+    low_cut=0.006/ u.pix,
+    high_cut=0.1/ u.pix,
+    fit_kwargs={"brk": 0.02 / u.pix, "log_break": False},
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+pspec_n2.freqs[0] = np.nan
+ax.plot(pspec_n2.freqs, pspec_n2.freqs**3 * pspec_n2.ps1D, ".", color="g")
+ax.set(
+    xscale="log", yscale="log",
+)
+
+# ## Delta variance of the intensity and velocity maps
+#
+# In principle, the delta variance is quite similar to the structure function in the sense that it is measuring the variance as a function of scale.  It is generally applied to column densities, but there is nothing stopping us applying it to the velocity field as well.  
+#
+# Acording to the case stiudies in the turbustats documentation, it deals with edge effects in non-periodic data sets much better than the power law does.
+
+dvar = tss.DeltaVariance(hdulist[1])
+
+plt.figure(figsize=(14, 8))
+dvar.run(verbose=True, boundary="fill", xlow=3*u.pix, xhigh=100*u.pix, brk=30*u.pix)
+
+plt.figure(figsize=(14, 8))
+dvar.plot_fit()
+
+# This looks very similar to the structure function!
+#
+# Now try it on the velocities.  We have to tidy up the data first, since it contains NaNs, which turbustat doesn't like. Replace all bad pixels with the median velocity:
+
+vmed = np.nanmedian(hdulist[2].data)
+m = np.isfinite(hdulist[2].data)
+hdulist[2].data[~m] = vmed
+
+dvar_v = tss.DeltaVariance(hdulist[2])
+
+plt.figure(figsize=(14, 8))
+dvar_v.run(verbose=True, boundary="fill", xlow=4*u.pix, xhigh=100*u.pix, brk=30*u.pix)
+
+#
+
+# ## Using generated red-noise to simulate two layers
+
+from turbustat.simulator import make_extended
+img = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=45, randomseed=3)
+# Now shuffle so the peak is near the centre
+#img = np.roll(img, (128, -30), (0, 1))
+img -= img.min()
+img2 = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=135, randomseed=99)
+img2 -= img2.min()
+plt.figure(figsize=(10, 10))
+plt.imshow(img**2 + img2**2, origin='lower')  
+plt.colorbar()  
+
+plt.figure(figsize=(10, 10))
+plt.imshow((img**2 - img2**2)/(img**2 + img2**2), origin='lower', cmap="coolwarm")  
+plt.colorbar()  
+
+tss.PDF(fits.PrimaryHDU(img**2 + img2**2), min_val=0.0, bins=None).run(verbose=True)
+
+
