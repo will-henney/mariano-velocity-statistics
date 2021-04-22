@@ -653,8 +653,14 @@ CLOSED: [2021-01-26 Tue 19:36]
   + They claim that this is not affected like the structure function is
   + In that we always get the reduction by 1 in the \Delta-variance slope when passing from 3D to 2D
   + But I am not entirely convinced.  I plan to do some experiments ...
+  + [2021-04-22 Thu 11:47] Results of initial experiments in notebook:
+    + Taking a thin sheet (LOS depth of 16 pixels out of 256) from a fBM cube does seem to reduce the slope of the delta-variance, but we don't see a clear break in the spectrum at the scale of the LOS depth.  I need to investigate more the variation with power spectrum slope, k. Also, I should do the structure function for the thin sheets too. And calculate the spatial power spectrum for good measure.
+    + There are also some interesting trends in the distribution of LOS sigma and its relation to the POS sigma. For shallow power spectra (k < 3) we see that the LOS sigma is a rather narrow distribution around 1 for the thick cloud, and is somewhat broader and around 0.8 for the thin sheet. At the same time, the distribution of centroid velocities becomes significantly narrower than in the full cube, especially for the thick cloud, but to some extent also for the thin sheet.
 + Ossenkopf:2006a also say that the question whether the centroid velocity spectrum reflects velocity variations or not is mainly a function of the relative amplitude of the density fluctuations \sigma_\rho/\rho
-  + If his is below 0.5, then we mainly see velocity fluctuations
+  + If this is below 0.5, then we mainly see velocity fluctuations
+  + So Orion would be a marginal case if this were true
+  + And Carina would be in the density-dominated regime
+  + Note that we have to read "volumetric emission coefficient" when they say "density"
 ** Gravity as cause for the line widths
 
 + In cases where gravity is dominant, then all components should show the same velocity dispersion:
