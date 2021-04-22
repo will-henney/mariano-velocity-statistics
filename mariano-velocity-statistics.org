@@ -641,9 +641,20 @@ CLOSED: [2021-01-26 Tue 19:36]
    - We already have results for Orion, but we could extend them to larger scales using the orion treasury images of the entire nebula
 ** General thoughts on the strucfuncs, spatial power spectrum, delta variance, etc
 + The delta variance gives something that is very similar to the structure function for the velocity
-  + We see a resing curve at small separations,
+  + We see a rising curve at small separations,
 + [ ] How to interpret the y-axis in the delta variance plots?
-  + It is somehow related to the variance at each scale, but the must be some constants involved since the un-normalised velocity structure function for 30 Dor saturates at 2 \sigma^2 = 500 km^2/s^2, whereas \sigma^2_\Delta from the delta variance reaches about 20 km^2/s^2 
+  + It is somehow related to the variance at each scale, but the must be some constants involved since the un-normalised velocity structure function for 30 Dor saturates at 2 \sigma^2 = 500 km^2/s^2, whereas \sigma^2_\Delta from the delta variance reaches about 20 km^2/s^2
+  + I multiplied it by 4 \pi and that seems to just about work
++ Relationship between structure function and delta-variance
+  + This is discussed in detail in Ossenkopf:2006a
+    + Theoretically, they should show the same power law slope for "steep" spectra
+    + In practise, they are always similar
++ Effect of projection on the delta-variance
+  + They claim that this is not affected like the structure function is
+  + In that we always get the reduction by 1 in the \Delta-variance slope when passing from 3D to 2D
+  + But I am not entirely convinced.  I plan to do some experiments ...
++ Ossenkopf:2006a also say that the question whether the centroid velocity spectrum reflects velocity variations or not is mainly a function of the relative amplitude of the density fluctuations \sigma_\rho/\rho
+  + If his is below 0.5, then we mainly see velocity fluctuations
 ** Gravity as cause for the line widths
 
 + In cases where gravity is dominant, then all components should show the same velocity dispersion:

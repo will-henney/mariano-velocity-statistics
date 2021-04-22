@@ -296,7 +296,59 @@ dvar_v = tss.DeltaVariance(hdulist[2])
 plt.figure(figsize=(14, 8))
 dvar_v.run(verbose=True, boundary="fill", xlow=4*u.pix, xhigh=100*u.pix, brk=30*u.pix)
 
-#
+# Now, we will try normalizing everything:
+
+vmean = np.mean(hdulist[2].data)
+vsig = np.std(hdulist[2].data)
+print(vmean, vsig)
+dv = (hdulist[2].data - vmean) / vsig
+
+ln_S = np.log(hdulist[1].data)
+ln_S[~np.isfinite(ln_S)] = np.nanmedian(ln_S)
+ln_S_mean = np.mean(ln_S)
+ln_S_sig = np.std(ln_S)
+print(ln_S_mean, ln_S_sig)
+dlnS = (ln_S - ln_S_mean)/ln_S_sig
+
+dvar_dlnS = tss.DeltaVariance(dlnS, header=hdulist[1].header)
+
+dvar_dv = tss.DeltaVariance(dv, header=hdulist[2].header)
+
+dvar_dlnS.compute_deltavar(boundary="fill")
+
+dvar_dv.compute_deltavar(boundary="fill")
+
+
+# Compare the 
+
+def bfunc(r, r0, sig2, m):
+    "Theoretical structure function"
+    C = 1.0 / (1.0 + (r/r0)**m)
+    return 2.0*sig2*(1 - C)
+
+
+
+# +
+fig, ax = plt.subplots(figsize=(10, 8))
+NORM = 4*np.pi
+PIX = 0.05 # pixel scale in pc
+#ax.plot(dvar_dlnS.lags, NORM*dvar_dlnS.delta_var, "o", label="ln S")
+ax.plot(PIX*1.02*dvar_dv.lags, NORM*dvar_dv.delta_var, "o", label="V")
+ax.plot(PIX*0.98*dvar.lags, NORM*dvar.delta_var, "o", label="S")
+ax.axhline(1.0, lw=0.5, ls="--", color="k")
+ax.axhline(0.5, lw=0.5, ls="--", color="k")
+
+x = np.logspace(-1.0, 1.3, 200)
+ax.plot(x, bfunc(x, r0=2.1, sig2=0.58, m=1.4))
+
+ax.legend()
+ax.set(
+    xscale="log",
+    yscale="log",
+    xlabel="Lag, pc",
+    ylabel=r"$\Delta$-variance $\times 4\pi$",
+);
+# -
 
 # ## Using generated red-noise to simulate two layers
 
@@ -316,5 +368,80 @@ plt.imshow((img**2 - img2**2)/(img**2 + img2**2), origin='lower', cmap="coolwarm
 plt.colorbar()  
 
 tss.PDF(fits.PrimaryHDU(img**2 + img2**2), min_val=0.0, bins=None).run(verbose=True)
+
+# ## Is delta variance affected by projection smoothing?
+#
+# Projection smoothing operates at scales smaller than the line-of-sight depth through a turbulent region and means that the 2D structure function slope becomes steeper than the 3D structure function slope.  So it becomes $\beta - 3$ instead of $\beta - 2$. Where $\beta$ is the slope of the power spectrum: $P(k) \propto k^{-\beta}$.  This is the notation of Ossenkopf:2006a. 
+#
+# We want to check that his really produces a change in the slope of the structure function, and also to check whether we see anything similar in the delta-variance.  From what everyone says, the delta-variance should mot suffer from the same problem, but I am not sure I beleive it.  
+#
+# Also, we can check the difference between steep and shallow spectra.  Ossenpof:2006a imply that it is only for shallow spectra that the autocorrelation function is a poer law.  
+
+# We can investigate this using the 3D fBM functions of turbustats.
+
+from turbustat.simulator import make_3dfield
+
+threeD_field = make_3dfield(128, powerlaw=2.5)
+
+deep_vmap = np.mean(threeD_field, axis=0)
+koffset = 64
+shallow_vmap = np.mean(threeD_field[koffset:16 + koffset, :, :], axis=0)
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+axes[0].imshow(deep_vmap)
+axes[1].imshow(shallow_vmap)
+
+dvar_deep = tss.DeltaVariance(fits.PrimaryHDU(deep_vmap))
+
+dvar_shallow = tss.DeltaVariance(fits.PrimaryHDU(shallow_vmap))
+
+dvar_deep.run(verbose=True)
+
+dvar_shallow.run(verbose=True)
+
+deep_vmap.std()
+
+shallow_vmap.std()
+
+threeD_field[:, 0, 0].std()
+
+deep_sig_los = threeD_field[:, :, :].std(axis=0)
+shallow_sig_los = threeD_field[koffset:16 + koffset, :, :].std(axis=0)
+
+deep_sig_los.mean(), deep_sig_los.std()
+
+shallow_sig_los.mean(), shallow_sig_los.std()
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+im0 = axes[0].imshow(shallow_sig_los, vmin=0.0, vmax=1.2)
+c0 = fig.colorbar(im0, ax=axes[0])
+im1 = axes[1].imshow(deep_sig_los, vmin=0.0, vmax=1.2)
+c1 = fig.colorbar(im1, ax=axes[1])
+
+# So, this is interesting.  For the shallow velocity spectrum, $k=2$, the LOS sigma does not show much variation, either in the thick or the thin volume. 
+#
+# Whereas, with the steep velocity spectrum, $k=4$, we see a broad PDF of the LOS sigma
+#
+# **We need to sort out the terminology better.  We can use deep-vs-shallow for LOS thickness, or we can use steep-vs-shallow for power spectrum slope, but we shouldn't use shallow for both**
+
+sns.histplot(
+    {"thin": shallow_sig_los.ravel(), "thick": deep_sig_los.ravel()}
+)
+plt.gca().set(xlim=[0.0, 1.4]);
+
+# This is the histogram of the LOS sigmas, which for the shallow spectrum becomes narrow, with a mean of just less than 1, especially for the thick cloud.  
+
+sns.histplot(
+    {
+        "thin": shallow_vmap.ravel(), 
+        "thick": deep_vmap.ravel(), 
+        "3D": threeD_field.ravel(),
+    },
+    stat="density",
+    common_norm=False,
+)
+plt.gca().set(xlim=[-2.5, 2.5]);
+
+# And this is a histogram of the centroid velocities, compared with the 3D velocities in green.  For the shallow spectrum, the distribution is narrower than that of the full cube. 
 
 
