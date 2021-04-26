@@ -355,7 +355,7 @@ ax.set(
 from turbustat.simulator import make_extended
 img = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=45, randomseed=3)
 # Now shuffle so the peak is near the centre
-#img = np.roll(img, (128, -30), (0, 1))
+#img = np.roll(img, (128, -30), (0, 1))  
 img -= img.min()
 img2 = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=135, randomseed=99)
 img2 -= img2.min()
@@ -398,6 +398,8 @@ dvar_shallow = tss.DeltaVariance(fits.PrimaryHDU(shallow_vmap))
 dvar_deep.run(verbose=True)
 
 dvar_shallow.run(verbose=True)
+
+# ### Statistics of sigmas and how it varies with power law steepness
 
 deep_vmap.std()
 
@@ -443,5 +445,24 @@ sns.histplot(
 plt.gca().set(xlim=[-2.5, 2.5]);
 
 # And this is a histogram of the centroid velocities, compared with the 3D velocities in green.  For the shallow spectrum, the distribution is narrower than that of the full cube. 
+
+# ### Structure function from simulated maps
+
+import sys
+sys.path.append("../muse-strucfunc")
+
+import strucfunc
+
+sf = strucfunc.strucfunc_numba_parallel(shallow_vmap)
+sf
+
+sig0 = shallow_vmap.std()
+fig, ax = plt.subplots()
+ax.plot("log10 r", "Unweighted B(r)", "o", data=sf)
+ax.axhline(sig0**2)
+ax.axhline(2*sig0**2)
+ax.set(
+    yscale="log",
+)
 
 

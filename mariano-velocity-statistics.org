@@ -662,7 +662,6 @@ CLOSED: [2021-01-26 Tue 19:36]
   + And Carina would be in the density-dominated regime
   + Note that we have to read "volumetric emission coefficient" when they say "density"
 ** Gravity as cause for the line widths
-
 + In cases where gravity is dominant, then all components should show the same velocity dispersion:
   + Ionized gas
   + Molecular gas
@@ -688,6 +687,40 @@ CLOSED: [2021-01-26 Tue 19:36]
     + Although the scales they are working at are far larger than the ones we have studied before
   + Although I suppose that we could have injection scale being the average separation between stars
     + And then turbulent cascade at smaller scales
+
+
+** Reynolds number in H II regions
++ General definition:
+  \[
+  \mathrm{Re} = \frac{u L}{\nu} 
+  \]
+  + u is velocity
+  + L is size
+  + \nu is kinematic viscosity in cm^2/s
+    + \nu = \lambda_mfp u_therm
+    + viscosity is dominated by electrons with u_therm \approx 550 T_4^{1/2} km/s
+      + u_therm \approx (m_p/m_e)^{1/2} c_s
+    + from kappa paper: \lambda_mfp \approx 1.3e12 T_4^2 n_e^-1 cm
+  + So Re = (u / u_therm) (L / \lambda_mfp)
++ Relation to Knudsen number and Mach number:
+  + Kn = \lambda_mfp / L
+  + Ma = u / c_s
+  + => Re \approx (m_e/m_p)^{1/2} Ma / Kn  \approx 0.023 Ma / Kn
++ Relation to ionization parameter
+  + U = Q / 4 \pi R_s^2 n c
+    + Q is ionizing luminosity; R_s is Strömgren radius
+  + From the kappa paper, I have:
+    + Kn = 3.76e-12 U^-1
+    + Also U = 0.0006 (Q_49 n)^{1/3}
+  + Hence
+    + Re \approx 6.1e9 Ma U
+    + Re \approx 3.7e6 Ma (Q_49 n)^{1/3}
+  + Typically, Q_49 n \approx 1e4 => U \approx 0.013
+    + Re \approx 8e7 Ma
++ *Conclusion*
+  + Typical Reynolds number should be of order 1e8
+  + From the analysis of Elsinga:2020z this means that the flow should supported multiple nested shear layers, up to sub-sublayers
+     
 ** Structure functions and spatial power laws
 + Structure functions of molecular gas
   + Henshaw:2020t
