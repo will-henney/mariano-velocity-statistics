@@ -717,9 +717,47 @@ CLOSED: [2021-01-26 Tue 19:36]
     + Re \approx 3.7e6 Ma (Q_49 n)^{1/3}
   + Typically, Q_49 n \approx 1e4 => U \approx 0.013
     + Re \approx 8e7 Ma
++ Taylor scale Reynolds number
+  + This is Re* in Elsinga:2020a
+  + They have an equation (2.4) that relates Re* to the global Re
+    + we use it with their default parameters
+      + D = 0.5
+      + \alpha = 0.010
+      + b = 0.67
+    + To get
+      + Re* = 9.65 Re^{1/3} [0.67 + 0.33 0.01 Re]^{1/6}
+      + For Re >> 1000, this becomes 3.7 Re^{1/2}
+    + So Re = 1e8 -> Re* = 3.7e4
+    + If we substitute this again (full equation this time), we get
+      + Re** = 717 for sub-layers
+      + Re*** = 104 for sub-sub layers
+    + So fact that sub-sub layers have Re*** < 150 means that they are not themselves turbulent.
++ "Significant shear layers" from Elsinga:2020a
+  + They have thickness pf 4 \lambda_T
+  + And velocity difference of order U, which is the large-scale velocity dispersion
+  + So this velocity difference is much larger than the RMS b = |v-v'| at scale \lambda_T
+    + *because the volume filling factor of the shear layers is small*, of order \lambda_T/L
+  + This is repeated for the sub-layers and sub-sub layers
+    + *they all have velocity differences of order U*
+    + but smaller and smaller volume fractions
++ Wikipedia equations for Taylor microscale
+  + This gives \lambda_T / L = sqrt(10 / Re)
+    + For Re = 1e8, this gives \lambda_T = 3e-4 L
+    + This is consistent with the result Re* = 3.7e4 Re, assuming same U at all scales
+  + Also, \eta / L = Re^{-3/4} = 1e-6 L
+    + But this is the Kolmogorov length at the mean dissipation rate
+    + The Elsinga:2020a theory is that the shear layers have enhanced dissipation and smaller and smaller Kolmogorov scales with each nesting
+  + So if the driving scale is 1 pc, then we have a Taylor microscale of 0.3 mpc, or 0.15 arcsec at Orion
+    + And Orion has a smaller driving scale, so Taylor microscale would be tough to observe
+  + Hierarchy
+    + L -> L* -> L** -> L***
+    + L = 1 pc -> L* = 0.3 mpc -> L** = 0.005 mpc (1 AU) -> L*** = 0.0006 mpc (0.12 AU)
+    + \eta = 0.001 mpc (0.2 AU) -> \eta* = 0.0001 mpc (0.02 AU) -> \eta** = 0.00003 mpc (0.006 AU) -> stop there!  
 + *Conclusion*
   + Typical Reynolds number should be of order 1e8
-  + From the analysis of Elsinga:2020z this means that the flow should supported multiple nested shear layers, up to sub-sublayers
+  + From the analysis of Elsinga:2020z this means that the flow should support multiple nested shear layers, up to sub-sublayers
+  + The Reynolds number at the Taylor scale should be smaller, but only by a factor of l_T/L
+    + This is because the velocity difference is the same at all nested layers
      
 ** Structure functions and spatial power laws
 + Structure functions of molecular gas
