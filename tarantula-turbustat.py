@@ -350,24 +350,112 @@ ax.set(
 );
 # -
 
+# Look at the PDF of velocity differences for different lags.  However, this is going to run into problems round the edges since the data isn't periodic
+
+# +
+vmap = dv
+
+dv_001 = vmap - np.roll(vmap, (4, 4), axis=(0, 1))
+m = (dv_001 == 0.0) | (np.abs(dv_001) > 8.0)
+dv_001[m] = np.nan
+
+dv_010 = vmap - np.roll(vmap, (16, 16), axis=(0, 1))
+m = (dv_010 == 0.0) | (np.abs(dv_010) > 8.0)
+dv_010[m] = np.nan
+
+dv_100 = vmap - np.roll(vmap, (64, 64), axis=(0, 1))
+m = (dv_100 == 0.0) | (np.abs(dv_100) > 8.0)
+dv_100[m] = np.nan
+
+fig, axes = plt.subplots(1, 3, sharey=True, figsize=(12,4))
+kwds = dict(
+    origin="lower", 
+    vmin=0.0, 
+    vmax=3.0, 
+    cmap="gray_r"
+)
+axes[0].imshow(np.abs(dv_001), **kwds)
+axes[1].imshow(np.abs(dv_010), **kwds)
+axes[2].imshow(np.abs(dv_100), **kwds)
+# -
+
+fig, ax = plt.subplots(figsize=(12,8))
+sns.histplot(
+    {
+        "lag: (4, 4)": dv_001[4:-4, 4:-4].ravel(), 
+        "lag: (16, 16)": dv_010[16:-16, 16:-16].ravel(), 
+        "lag: (64, 64)": dv_100[64:-64, 64:-64].ravel(), 
+    },
+    bins=100,
+    stat="density",
+    common_norm=False,
+    common_bins=True,
+    ax=ax,
+)
+ax.set(
+    #xlim=[-10.0, 4.0],
+    yscale="log"
+);
+
+
+
+
+
 # ## Using generated red-noise to simulate two layers
 
 from turbustat.simulator import make_extended
-img = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=45, randomseed=3)
+img = make_extended(512, powerlaw=3.67, ellip=0.5, theta=45, randomseed=3)
 # Now shuffle so the peak is near the centre
 #img = np.roll(img, (128, -30), (0, 1))  
 img -= img.min()
-img2 = make_extended(1024, powerlaw=4.0, ellip=0.5, theta=135, randomseed=99)
+img2 = make_extended(512, powerlaw=3.67, ellip=0.5, theta=135, randomseed=99)
 img2 -= img2.min()
+imap_2l = img**2 + img2**2
 plt.figure(figsize=(10, 10))
-plt.imshow(img**2 + img2**2, origin='lower')  
+plt.imshow(imap_2l, origin='lower')  
 plt.colorbar()  
 
+vmap_2l = (img**2 - img2**2)/(img**2 + img2**2)
 plt.figure(figsize=(10, 10))
-plt.imshow((img**2 - img2**2)/(img**2 + img2**2), origin='lower', cmap="coolwarm")  
+plt.imshow(vmap_2l, origin='lower', cmap="coolwarm")  
 plt.colorbar()  
 
-tss.PDF(fits.PrimaryHDU(img**2 + img2**2), min_val=0.0, bins=None).run(verbose=True)
+tss.PDF(fits.PrimaryHDU(imap_2l), min_val=0.0, bins=None).run(verbose=True)
+
+vmap = vmap_2l
+dv_001 = vmap - np.roll(vmap, (4, -4), axis=(0, 1))
+dv_010 = vmap - np.roll(vmap, (16, -16), axis=(0, 1))
+dv_100 = vmap - np.roll(vmap, (128, -128), axis=(0, 1))
+fig, axes = plt.subplots(1, 3, sharey=True, figsize=(12,4))
+kwds = dict(
+    origin="lower", 
+    vmin=0.0, 
+    vmax=1.0, 
+    cmap="gray_r"
+)
+axes[0].imshow(np.abs(dv_001), **kwds)
+axes[1].imshow(np.abs(dv_010), **kwds)
+axes[2].imshow(np.abs(dv_100), **kwds)
+
+fig, ax = plt.subplots(figsize=(12,8))
+sns.histplot(
+    {
+        "lag: (4, 4)": dv_001.ravel(), 
+        "lag: (16, 16)": dv_010.ravel(), 
+        "lag: (64, 64)": dv_100.ravel(), 
+    },
+    bins=100,
+    stat="density",
+    common_norm=False,
+    common_bins=True,
+    ax=ax,
+)
+ax.set( 
+    #xlim=[-2.0, 2.0],
+    yscale="log"
+);
+
+# This looks very similar to the observations! Very fat tails to the distributions.
 
 # ## Is delta variance affected by projection smoothing?
 #
@@ -381,15 +469,15 @@ tss.PDF(fits.PrimaryHDU(img**2 + img2**2), min_val=0.0, bins=None).run(verbose=T
 
 from turbustat.simulator import make_3dfield
 
-threeD_field = make_3dfield(128, powerlaw=2.5)
+threeD_field = make_3dfield(256, powerlaw=2.5)
 
 deep_vmap = np.mean(threeD_field, axis=0)
 koffset = 64
-shallow_vmap = np.mean(threeD_field[koffset:16 + koffset, :, :], axis=0)
+shallow_vmap = np.mean(threeD_field[koffset:32 + koffset, :, :], axis=0)
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-axes[0].imshow(deep_vmap)
-axes[1].imshow(shallow_vmap)
+axes[0].imshow(deep_vmap, vmin=-1.5, vmax=1.5, cmap="seismic")
+axes[1].imshow(shallow_vmap, vmin=-1.5, vmax=1.5, cmap="seismic")
 
 dvar_deep = tss.DeltaVariance(fits.PrimaryHDU(deep_vmap))
 
@@ -408,7 +496,7 @@ shallow_vmap.std()
 threeD_field[:, 0, 0].std()
 
 deep_sig_los = threeD_field[:, :, :].std(axis=0)
-shallow_sig_los = threeD_field[koffset:16 + koffset, :, :].std(axis=0)
+shallow_sig_los = threeD_field[koffset:32 + koffset, :, :].std(axis=0)
 
 deep_sig_los.mean(), deep_sig_los.std()
 
@@ -429,22 +517,26 @@ c1 = fig.colorbar(im1, ax=axes[1])
 sns.histplot(
     {"thin": shallow_sig_los.ravel(), "thick": deep_sig_los.ravel()}
 )
-plt.gca().set(xlim=[0.0, 1.4]);
+plt.gca().set(xlim=[0.0, 2.0], yscale="log");
 
 # This is the histogram of the LOS sigmas, which for the shallow spectrum becomes narrow, with a mean of just less than 1, especially for the thick cloud.  
+#
+# When we plot it on a log axis, we see that the distributions are slightly skew, especially for the thin slice, and the tails are a bit fat. 
 
 sns.histplot(
     {
         "thin": shallow_vmap.ravel(), 
         "thick": deep_vmap.ravel(), 
-        "3D": threeD_field.ravel(),
+        #"3D": threeD_field.ravel(),
     },
     stat="density",
     common_norm=False,
 )
-plt.gca().set(xlim=[-2.5, 2.5]);
+plt.gca().set(xlim=[-2.5, 2.5], yscale="log");
 
 # And this is a histogram of the centroid velocities, compared with the 3D velocities in green.  For the shallow spectrum, the distribution is narrower than that of the full cube. 
+#
+# There is no evidence of skewness or of fat tails.
 
 # ### Structure function from simulated maps
 
@@ -464,5 +556,65 @@ ax.axhline(2*sig0**2)
 ax.set(
     yscale="log",
 )
+
+sfd = strucfunc.strucfunc_numba_parallel(deep_vmap)
+sfd
+
+sig0 = deep_vmap.std()
+fig, ax = plt.subplots()
+ax.plot(10**sfd["log10 r"], sfd["Unweighted B(r)"], "o", label="thick")
+ax.plot(10**sf["log10 r"], sf["Unweighted B(r)"], "o", label="thin")
+ax.axhline(sig0**2)
+ax.axhline(2*sig0**2)
+xx = np.logspace(0.0, 2.0)
+yy = 0.01 * xx**0.5
+ax.plot(xx, yy)
+ax.legend()
+ax.set(
+    xscale="log",
+    yscale="log",
+)
+
+# ### Look at PDF of velocity differences at different lags
+#
+# We can use `np.roll` to quickly look at velocity differences at different lags. 
+
+dv_001 = deep_vmap - np.roll(deep_vmap, (-1, 1), axis=(0, 1))
+dv_010 = deep_vmap - np.roll(deep_vmap, (10, 10), axis=(0, 1))
+dv_100 = deep_vmap - np.roll(deep_vmap, (100, 100), axis=(0, 1))
+fig, ax = plt.subplots(figsize=(12,8))
+sns.histplot(
+    {
+        "lag: (1, 1)": dv_001.ravel(), 
+        "lag: (10, 10)": dv_010.ravel(), 
+        "lag: (100, 100)": dv_100.ravel(), 
+    },
+    stat="density",
+    common_norm=False,
+    ax=ax,
+)
+ax.set(
+    xlim=[-2.0, 2.0],
+    yscale="log"
+);
+
+dv_001 = shallow_vmap - np.roll(shallow_vmap, (1, 1), axis=(0, 1))
+dv_010 = shallow_vmap - np.roll(shallow_vmap, (10, 10), axis=(0, 1))
+dv_100 = shallow_vmap - np.roll(shallow_vmap, (100, 100), axis=(0, 1))
+fig, ax = plt.subplots(figsize=(12,8))
+sns.histplot(
+    {
+        "lag: (1, 1)": dv_001.ravel(), 
+        "lag: (10, 10)": dv_010.ravel(), 
+        "lag: (100, 100)": dv_100.ravel(), 
+    },
+    stat="density",
+    common_norm=False,
+    ax=ax,
+)
+ax.set(
+    xlim=[-3.0, 3.0], 
+    yscale="log"
+);
 
 
