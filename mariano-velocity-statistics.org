@@ -754,11 +754,94 @@ CLOSED: [2021-01-26 Tue 19:36]
     + L = 1 pc -> L* = 0.3 mpc -> L** = 0.005 mpc (1 AU) -> L*** = 0.0006 mpc (0.12 AU)
     + \eta = 0.001 mpc (0.2 AU) -> \eta* = 0.0001 mpc (0.02 AU) -> \eta** = 0.00003 mpc (0.006 AU) -> stop there!  
 + *Conclusion*
-  + Typical Reynolds number should be of order 1e8
+  + Typical Reynolds number should be of order 1e8 on scale of Strömgren radius
+    + If injection scale is smaller than that, then will be reduced accordingly
   + From the analysis of Elsinga:2020z this means that the flow should support multiple nested shear layers, up to sub-sublayers
   + The Reynolds number at the Taylor scale should be smaller, but only by a factor of l_T/L
     + This is because the velocity difference is the same at all nested layers
-     
+
+** Integral length scale
+:PROPERTIES:
+:ID:       A20A9E65-5EF3-4874-8CE1-DD73776928AA
+:ATTACH_DIR: /Users/will/Dropbox/mariano-velocity-statistics/README_att
+:END:
++ https://en.wikipedia.org/wiki/Integral_length_scale
++ This has a definition in terms of the autocorrelation C(l):
+  + L = \int_0^\infty C(l) dl
+  + We had been using C(l) = [1 + (l/l_0)^m]^-1
+    + This has the problem that L does not converge for m <= 1
+  + If we fudge this by using an outer scale of A l_0, then we get
+    + L/l_0 = A 2F1(1, 1/m, (1 + m)/m, -A^m)
+    + With A = 10, we get L/l_0 = [3.0, 2.3, 1.6]  for m = [0.7, 1.0, 1.8]
+    + With A = 100 we get L/l_0 = [8.5, 5, 2]  for m = [0.7, 1.0, 1.8]
+  + What if we used C(x) =  [1 + (1/a) x^m]^-a with x \equiv l/l_0 ?
+    + Small x expansion is still
+      + C(x) = 1 - (a/a) x^m = 1 - x^m
+    + Take case a = 2
+      + Indefinite integral is now: x 2F1(2, 1/m, (m + 1)/m, -0.5 x^m) which should converge to finite value as x \to \infty
+      + Yes, limit is [5.31, 2.00, 1.16] for m = [0.7, 1.0, 1.8]
+  + Can we not modify the equation so that we get better behavior for l > l_0 ?
+    + S(x) = 2 [1 - C(x)] with x \equiv l/l_0
+      + Small x: 2[ 1 - (1 + x^m)^-1] = 2 [1 - (1 - x^m)] = 2 x^m
+      + So multiply that by something that is \approx 1 for small x, but falls as x^-m at large x
+      + 1 / 1 + x^m would get us back to original
+      + e^-x + (1 - e^-x) x^-m might work
+        + Small x: 1 - x + (1 - 1 + x) x^-m = 1 - x + x^{1-m}
+        + So that is OK if m < 1
++ Alternative definition in terms of power spectrum P(k)
+  + L = \int_0^\infty k^-1 P(k) dk / \int_0^\infty P(k) dk
+  + [ ] *or should I be integrating over d^3k ?*
+    + Yes, I think so. Pope has a similar equation, but with a constant
+      \[
+      L_{11} = \frac{\pi}{2 \langle u_1^2 \rangle} \int_0^\infty \frac{E(\kappa)}{\kappa} \, d\kappa
+      \]
+    + And the E(\kappa) that he uses is one where Kolmogorov spectrum is \kappa^{-5/3} so this is different from the k^-\beta version
+    + In the Lazarian terminology, the power spectrum is k^n with n = -11/3 for Kolmogorov
+    + In Pope terminology the /energy/ spectrum is E(\kappa) ~ \kappa^-p with p = 5/3 for Kolmogorov
+      + So n = -(p + 2)
+    + In Lazarian terminology, "steep" is n < -3, which corresponds to p > 1 in Pope
+      + In Pope sec 6.1.3, there is a discussion of the possible limits on p if it is extended over the entire wavenumber range
+        #+attr_org: :width 600
+        [[file:README_att/screenshot-20210427-183135.png]]
+      + This shows that p should be in range 1 < p < 3 to avoid high-\kappa divergence of energy (on shallow side) or low-\kappa divergence of dissipation (on steep side)
+        + This implies that -n is in the range 3 to 5
+        + Of course, it is possible to have a shallower spectrum over a certain range of \kappa, so long as there is a high-\kappa cut-off
+    + Relation with turbustat terminology
+      
+  + For our simulated fields we use P(k) = k^-\beta
+    + but only between k = 1 and k = N
+    + with k being spatial frequency in units (box size)^-1
+  + Therefore L = \int_1^N k^{-(\beta+1)} dk / \int_1^N k^-\beta dk
+    + \int_1^N k^{-(\beta+1)} dk = [-1 / \beta] (N^-\beta - 1) = (1 - N^-\beta) / \beta
+    + \int_1^N k^-\beta dk = [-1 / (\beta - 1)] (N^{-(\beta-1)} - 1) = (1 - N^{-(\beta-1)}) / (\beta - 1)
+    + L = [(\beta - 1) / \beta] [(1 - N^-\beta) / (1 - N^{-(\beta-1)})]
+      + For large N, the second term \approx 1
+      + So L \approx (\beta - 1) / \beta \approx (m + 1) / (m + 2)
+    + So for m = [0.7, 1.0, 1.8], we have L = [0.63, 0.67, 0.74]
+
+
+** Effects of projection on structure functions and power laws
+:PROPERTIES:
+:ATTACH_DIR: /Users/will/Dropbox/mariano-velocity-statistics/README_att
+:END:
++ I always get confused by this
++ Claims from Ossenkopf:2006a
+  + Intro
+    [[file:README_att/screenshot-20210427-192519.png]]
+  + \Delta-variance slopes
+    [[file:README_att/screenshot-20210427-192815.png]]
+    [[file:README_att/screenshot-20210427-193104.png]]
+  + \Delta-variance amplitudes
+    [[file:README_att/screenshot-20210427-193212.png]]
+  + Figure (note, I only show the lower plot - the upper plot is for a shallow spectrum, but it is just the same really)
+    [[file:README_att/screenshot-20210427-194023.png]]
+  + Text to go with Figure
+    [[file:README_att/screenshot-20210427-194243.png]]
+    Note especially the comment that they only show scales up to about 1/3 of the box size.
+  + Further commentary by Will
+    + The figure looks pretty convincing and shows the effect of the projection smoothing, which steepens the power law by 1
+    + This is because they are projecting the entire cube
+    + I suspect that using a thin layer of a cube would produce different results
 ** Structure functions and spatial power laws
 + Structure functions of molecular gas
   + Henshaw:2020t
