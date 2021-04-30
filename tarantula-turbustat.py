@@ -377,25 +377,247 @@ kwds = dict(
 axes[0].imshow(np.abs(dv_001), **kwds)
 axes[1].imshow(np.abs(dv_010), **kwds)
 axes[2].imshow(np.abs(dv_100), **kwds)
-# -
+
+# +
+lag = 4
+ndv1 = dv_001[lag:-lag, lag:-lag].ravel()
+sig1 = ndv1.std()
+ndv1 /= sig1
+label1 = fr"$\ell = {lag}$ pix, $\sigma = {sig1:.2f} \sigma_0$"
+
+lag = 16
+ndv2 = dv_010[lag:-lag, lag:-lag].ravel()
+sig2 = ndv2.std()
+ndv2 /= sig2
+label2 = fr"$\ell = {lag}$ pix, $\sigma = {sig2:.2f} \sigma_0$"
+
+
+lag = 64
+ndv3 = dv_100[lag:-lag, lag:-lag].ravel()
+sig3 = ndv3.std()
+ndv3 /= sig3
+label3 = fr"$\ell = {lag}$ pix, $\sigma = {sig3:.2f} \sigma_0$"
+
+xmin, xmax = -10.0, 10.0
+xx = np.linspace(xmin, xmax, 200)
+# Gaussian profile
+gg = np.exp(-0.5 * xx**2) / np.sqrt(np.pi)
 
 fig, ax = plt.subplots(figsize=(12,8))
 sns.histplot(
     {
-        "lag: (4, 4)": dv_001[4:-4, 4:-4].ravel(), 
-        "lag: (16, 16)": dv_010[16:-16, 16:-16].ravel(), 
-        "lag: (64, 64)": dv_100[64:-64, 64:-64].ravel(), 
+        label3: ndv3, 
+        label2: ndv2, 
+        label1: ndv1, 
     },
     bins=100,
     stat="density",
+    multiple="stack",
     common_norm=False,
     common_bins=True,
     ax=ax,
+    palette="tab10",
+    alpha=0.7,
 )
+ax.plot(xx, gg)
 ax.set(
-    #xlim=[-10.0, 4.0],
-    yscale="log"
+    xlim=[xmin, xmax],
+    ylim=[1e-5, 1.0],
+    yscale="log",
+    xlabel="$\Delta v / \sigma$",
 );
+# -
+
+# So this is now plotted against the velocity difference normalised by the sigma at each lag. This boosts the wings of the low-lag results, since it is easier to get to 5-sigma when sigma is small!
+
+import pandas as pd
+
+ser = pd.Series(data=dv.ravel(), name="dv")
+
+ser.describe()
+
+np.percentile(dv, (0.001, 0.01, 0.1, 1.0, 99.0, 99.9, 99.99, 99.999))
+
+sig1, np.percentile(ndv1, (0.001, 0.1, 99.9, 99.999))
+
+sig2, np.percentile(ndv2, (0.001, 0.1, 99.9, 99.999))
+
+sig3, np.percentile(ndv3, (0.001, 0.1, 99.9, 99.999))
+
+# We want to improve this by using all the lags of a certain scale size. 
+
+import itertools
+
+
+def find_all_lags(s0, d_log_s0=0.15, only_positive_x=True):
+    """Find all the integer 2D pixel lags (i, j) with approx length `s0`
+    
+    Optional parameter `d_log_s0` is the base-10 logarithmic interval around `s0`
+    If `only_positive_x` is True, then only lags with j >= 0 are returned
+    """
+    smin = s0 * 10**(-d_log_s0/2)
+    smax = s0 * 10**(d_log_s0/2)
+    imax = int(smax) + 1
+    yrange = range(-imax, imax)
+    xrange = range(imax) if only_positive_x else range(-imax, imax)
+    lags = filter(
+        lambda x: smin <= np.hypot(*x) < smax, 
+        itertools.product(yrange, xrange)
+    )
+    return list(lags)
+
+
+find_all_lags(3)
+
+find_all_lags(1)
+
+find_all_lags(2)
+
+# So that seems to work fine for small separations
+
+len(find_all_lags(4)), len(find_all_lags(16)), len(find_all_lags(64))
+
+# For larger separations, the number of lags increases significantly.  We could maybe take a random sample of them. 
+
+fig, ax = plt.subplots()
+width = {
+    1: 0.5, 4: 0.25, 16: 0.15
+}
+for s0 in [1, 4, 16][::-1]:
+    pts = find_all_lags(s0, d_log_s0=width[s0], only_positive_x=False)
+    _y, _x = zip(*pts)
+    ax.scatter(_x, _y, marker=".", ec=None, alpha=0.7)
+ax.set_aspect("equal")
+sns.despine()
+
+# We need to put the NaNs back into the velocity array.
+
+havmap = fits.open(datadir / fitsfilename["ha"])[2].data
+
+havmap.mean()
+
+x = 4
+x is not None and 3 > x
+
+# +
+import random
+
+def make_dv_maps(vmap, s0, max_lags=None, d_log_s0=0.15):
+    """
+    Calculate a series of velocity difference maps for lags of length `s0`
+    """
+    lags = find_all_lags(s0, d_log_s0=d_log_s0, only_positive_x=False)
+    
+    # If we have more lags than desired, then choose a random sample of them
+    if max_lags is not None and len(lags) > max_lags:
+        lags = random.sample(lags, max_lags)
+        
+    dv_maps = []
+    for i, j in lags:
+        # difference with 2D lag of (y, x) = (i, j)
+        dv = vmap - np.roll(vmap, (i, j), axis=(0, 1))
+        # determine invalid border due to wrap-around
+        islice = slice(None, i) if i >= 0 else slice(i, None)
+        jslice = slice(None, j) if j >= 0 else slice(j, None)
+        # blank out the border pixels
+        dv[islice, :] = np.nan
+        dv[:, jslice] = np.nan
+        # save the difference map
+        dv_maps.append(dv)
+    # return a 3D stack of maps
+    return np.stack(dv_maps)
+
+
+# -
+
+dvmaps = make_dv_maps(havmap, 16.0)
+dvmaps.shape
+
+np.nanmean(dvmaps[0, :, :])
+
+advmap = np.nanmedian(np.abs(dvmaps), axis=0)
+
+np.nanmean(advmap)
+
+fig, ax = plt.subplots(1, 1, sharex=True, sharey=True, figsize=(10,10))
+kwds = dict(
+    origin="lower", 
+    vmin=0.0, 
+    vmax=40.0, 
+    cmap="turbo"
+)
+im = ax.imshow(advmap, **kwds)
+c = fig.colorbar(im, ax=ax)
+#ax.imshow(np.nanmean(np.abs(dvmaps), axis=0), **kwds)
+
+hdulist[2].data.mean()
+
+m = np.isfinite(dvmaps)
+dvmaps[m].shape
+
+dvmaps[m].min()
+
+H, edges = np.histogram(dvmaps[m], range=[-150, 150], bins=100)
+
+H
+
+centers = 0.5*(edges[:-1] + edges[1:])
+fig, ax = plt.subplots(1, 1)
+ax.plot(centers, H)
+ax.set(
+    yscale="log",
+)
+
+dvmaps004 = make_dv_maps(havmap, 4.0, d_log_s0=0.25)
+dvmaps004.shape
+
+advmap004 = np.nanmedian(np.abs(dvmaps004), axis=0)
+np.nanmean(advmap004)
+
+dvmaps001 = make_dv_maps(havmap, 1.0, d_log_s0=0.5)
+dvmaps001.shape
+
+advmap001 = np.nanmedian(np.abs(dvmaps001), axis=0)
+np.nanmean(advmap001)
+
+dvmaps064 = make_dv_maps(havmap, 64.0, max_lags=200)
+dvmaps064.shape
+
+advmap064 = np.nanmedian(np.abs(dvmaps064), axis=0)
+np.nanmean(advmap064)
+
+
+
+
+
+fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(14,12))
+kwds = dict(
+    origin="lower", 
+    vmin=0.0, 
+    vmax=40.0, 
+    cmap="turbo"
+)
+im = axes[0, 0].imshow(advmap001, **kwds)
+im = axes[0, 1].imshow(advmap004 - 0.8*advmap001, **kwds)
+im = axes[1, 0].imshow(advmap - 0.8*advmap001, **kwds)
+im = axes[1, 1].imshow(advmap064 - 0.8*advmap001, **kwds)
+c = fig.colorbar(im, ax=axes)
+
+hists = {}
+for s0, dvstack in (1, dvmaps001), (4, dvmaps004), (16, dvmaps), (64, dvmaps064):
+    m = np.isfinite(dvstack)
+    H, edges = np.histogram(dvstack[m], range=[-100, 100], bins=200)
+    hists[s0] = H
+
+centers = 0.5*(edges[:-1] + edges[1:])
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+for s0 in hists.keys():
+    H = hists[s0]
+    ax.plot(centers, H/H.sum())
+ax.set(
+    yscale="log",
+    ylim=[1e-6, 1.0],
+)
 
 
 
