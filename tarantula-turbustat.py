@@ -580,15 +580,17 @@ dvmaps001.shape
 advmap001 = np.nanmedian(np.abs(dvmaps001), axis=0)
 np.nanmean(advmap001)
 
-dvmaps064 = make_dv_maps(havmap, 64.0, max_lags=200)
+dvmaps064 = make_dv_maps(havmap, 64.0, max_lags=400)
 dvmaps064.shape
 
 advmap064 = np.nanmedian(np.abs(dvmaps064), axis=0)
 np.nanmean(advmap064)
 
-
-
-
+sigmap001 = np.nanstd(dvmaps001)
+sigmap004 = np.nanstd(dvmaps004)
+sigmap016 = np.nanstd(dvmaps)
+sigmap064 = np.nanstd(dvmaps064)
+sigmap001, sigmap004, sigmap016, sigmap064
 
 fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(14,12))
 kwds = dict(
@@ -603,10 +605,23 @@ im = axes[1, 0].imshow(advmap - 0.8*advmap001, **kwds)
 im = axes[1, 1].imshow(advmap064 - 0.8*advmap001, **kwds)
 c = fig.colorbar(im, ax=axes)
 
+fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(14,12))
+kwds = dict(
+    origin="lower", 
+    vmin=0.0, 
+    vmax=4.0, 
+    cmap="turbo"
+)
+im = axes[0, 0].imshow(advmap001 / sigmap001, **kwds)
+im = axes[0, 1].imshow((advmap004 - 0.8*advmap001) / sigmap004, **kwds)
+im = axes[1, 0].imshow((advmap - 0.8*advmap001) / sigmap016, **kwds)
+im = axes[1, 1].imshow((advmap064 - 0.8*advmap001) / sigmap064, **kwds)
+c = fig.colorbar(im, ax=axes)
+
 hists = {}
 for s0, dvstack in (1, dvmaps001), (4, dvmaps004), (16, dvmaps), (64, dvmaps064):
     m = np.isfinite(dvstack)
-    H, edges = np.histogram(dvstack[m], range=[-100, 100], bins=200)
+    H, edges = np.histogram(dvstack[m], range=[-60, 60], bins=200)
     hists[s0] = H
 
 centers = 0.5*(edges[:-1] + edges[1:])
@@ -616,10 +631,90 @@ for s0 in hists.keys():
     ax.plot(centers, H/H.sum())
 ax.set(
     yscale="log",
-    ylim=[1e-6, 1.0],
+    ylim=[1e-4, 1.0],
+    xlim=[-60, 60],
 )
 
+# Now, normalize by the sigma at each scale
 
+xmin, xmax = -6.0, 6.0
+scaled_hists = {}
+for s0, dvstack in (1, dvmaps001), (4, dvmaps004), (16, dvmaps), (64, dvmaps064):
+    m = np.isfinite(dvstack)
+    sig = np.std(dvstack[m])
+    H, edges = np.histogram(
+        dvstack[m]/sig, 
+        range=[xmin, xmax], 
+        bins=200,
+        density=True,
+    )
+    scaled_hists[s0] = H
+
+centers = 0.5*(edges[:-1] + edges[1:])
+
+# Fit Gaussian and Lorentzian
+
+# +
+from astropy.modeling import models, fitting
+
+fitter = fitting.LevMarLSQFitter()
+# Fit to core of s0=4 histogram
+H = scaled_hists[4]
+mcore = H >= 0.3*H.max()
+lfit = fitter(models.Lorentz1D(), centers[mcore], H[mcore])
+gfit = fitter(models.Gaussian1D(), centers[mcore], H[mcore])
+# -
+
+gfit, lfit
+
+fig, [ax1, ax2] = plt.subplots(2, 1, figsize=(8, 8))
+for s0 in scaled_hists.keys():
+    if s0 == 1: continue
+    H = scaled_hists[s0]
+    label = f"lag = {s0}"
+    ax1.plot(centers, H, label=label)
+    ax2.plot(centers, H, label=label)
+gauss = np.exp(-0.5*centers**2) / np.sqrt(2*np.pi)
+for ax in ax1, ax2:
+    ax.plot(centers, gfit(centers), 
+            color="k", ls="--", label="Gauss")
+    ax.plot(centers, lfit(centers), 
+            color="k", ls=":", label="Lorentz")
+    ax.plot(centers, np.exp(-1.7*np.abs(centers)), 
+            color="k", ls="-.", label="Exponential")
+ax1.set(
+    xlim=[-3, 3],
+    ylim=[0.0, 0.6],
+)
+ax2.legend(ncol=3)
+ax2.set(
+    yscale="log",
+    xlim=[xmin, xmax],
+    ylim=[1e-4, 30.0],
+    xlabel = "$\Delta v / \sigma$",
+)
+fig.tight_layout(h_pad=0.3);
+
+# Thus shows that the profile is approximately exponential in a large part of the wings, out to $\pm 4$, but then curves up a bit. 
+#
+# Now plot the same on log-log scale, which shows that the far wings go ax about $|x|^{-4}$, so the sigma is still finite.
+
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+for s0 in scaled_hists.keys():
+    if s0 == 1: continue
+    H = scaled_hists[s0]
+    ax.plot(centers, H)
+ax.plot(centers, gfit(centers), color="k", ls="--")
+ax.plot(centers, lfit(centers), color="k", ls=":")
+ax.plot(centers, centers**-4, color="k", lw=1)
+ax.plot(centers, np.exp(-1.7*np.abs(centers)), color="k", ls="-.", lw=1.0)
+ax.set(
+    xscale="log",
+    yscale="log",
+    xlim=[0.3, None],
+    ylim=[1e-4, 1],
+    xlabel = "$\Delta v / \sigma$",
+);
 
 
 
