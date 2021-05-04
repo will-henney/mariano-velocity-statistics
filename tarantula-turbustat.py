@@ -617,6 +617,7 @@ im = axes[0, 1].imshow((advmap004 - 0.8*advmap001) / sigmap004, **kwds)
 im = axes[1, 0].imshow((advmap - 0.8*advmap001) / sigmap016, **kwds)
 im = axes[1, 1].imshow((advmap064 - 0.8*advmap001) / sigmap064, **kwds)
 c = fig.colorbar(im, ax=axes)
+fig.savefig("multi-shear-ha.pdf")
 
 hists = {}
 for s0, dvstack in (1, dvmaps001), (4, dvmaps004), (16, dvmaps), (64, dvmaps064):

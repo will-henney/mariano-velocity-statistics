@@ -896,6 +896,66 @@ Hubble V: L(Ha) = 1e49 en fotones => Q(H) = 2.6e49
 Hubble X: L(Ha) = 2.4e49 en fotones => Q(H) = 6.24e49
 
 
+*** Other characteristics our H II region sample
++ Our Galaxy:
+  + Orion
+  + M8
+  + Carina
++ Local Group
+  + LMC
+    + 30 Dor
+  + NGC 6822
+    + Hubble V
+    + Hubble X
+  + M 33 (Triangulum Galaxy)
+    + NGC 595
+    + NGC 604
+
+
+*** Possible other regions to look at 
++ These are all regions with MUSE data
+
+| Source        | Distance, kpc | Lum | Size |
+|---------------+---------------+-----+------|
+| M17           |               |     |      |
+| RCW 49 (Wd 2) |           4.0 |     |      |
+| M 17          |               |     |      |
+| LMC-N44       |            50 |     |      |
+| LMC-N180      |            50 |     |      |
+
++ RCW 49 parameters
+  + Zeidler:2018a
+  + Zeidler:2021a has the velocity maps
+    + Shows a coherent pattern from blueshifted on the outside to redshifted on the inside
+    + Gradient of 15 to 20 km/s
+    + Seems correlated with the extinction
+    + Global expansion of H II region
+  + Tiwari:2021a has C I shell, like in Orion
+    + Also expanding at 15 km/s
+    + They say it is stellar wind driven but I am not convinced
+
+*** Relevant papers on our extragalactic H II regions
+
++ Munoz-Tunon:1996a has TAURUS spectroscopy of NGC 595 and 588
+  + They present I-sigma maps
+  + Gives a high-intensity minimum corrected sigma(LOS) for NGC 604 of 18 km/s
+    + *Compare our sigma(POS) of 7.3 km/s*
+  + Compare mainly with cometary stirring model of Tenorio-Tagle:1993e
++ Hodge:1989c calculate luminosity function of H II regions in NGC 6822
+  + For Hubble V and X they find
+    + log F(Ha) = 6.95, 6.93
+      + These are the brightest two regions in the galaxy
+      + In units of 1e-18 erg/s/cm2
+      + So about 8.9e-12 erg/s/cm2
+        + Which becomes 4e38 erg/s
+        + [ ] This is 10x larger than what we had in the table - need to fix!
+    + Isophotal diameter = 55, 81 pc
+      + Although up to twice as large if they take a lower brightness isophote
++ Bresolin:2020a do an I-sigma analysis of H II regions in M 101
+  + In principle they could have done structure functions but didn't
+  + They also discuss the difference in width between [O III] and H\beta
+    + But they seem to be largely wrong about it
+
 ** Velocity maps of Carina and Lagoon
 
 + Gaia-ESO spectroscopy
