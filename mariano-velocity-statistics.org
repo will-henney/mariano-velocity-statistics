@@ -915,13 +915,13 @@ Hubble X: L(Ha) = 2.4e49 en fotones => Q(H) = 6.24e49
 *** Possible other regions to look at 
 + These are all regions with MUSE data
 
-| Source        | Distance, kpc | Lum | Size |
-|---------------+---------------+-----+------|
-| M17           |               |     |      |
-| RCW 49 (Wd 2) |           4.0 |     |      |
-| M 17          |               |     |      |
-| LMC-N44       |            50 |     |      |
-| LMC-N180      |            50 |     |      |
+| Source        | Distance, kpc |    Lum | Size |
+|---------------+---------------+--------+------|
+| M17           |               |        |      |
+| RCW 49 (Wd 2) |           4.0 |  >5e50 |      |
+| LMC-N44       |            50 | 2.5e50 |   45 |
+| LMC-N180      |            50 | 1.3e50 |   40 |
+|               |               |        |      |
 
 + RCW 49 parameters
   + Zeidler:2018a
@@ -933,7 +933,42 @@ Hubble X: L(Ha) = 2.4e49 en fotones => Q(H) = 6.24e49
   + Tiwari:2021a has C I shell, like in Orion
     + Also expanding at 15 km/s
     + They say it is stellar wind driven but I am not convinced
++ N44 and N80 parameters
+  + Table 2 of McLeod:2019a gives Ha fluxes:
+    + 7.2e-10 erg/s/cm2 for N44
+    + 4.5e-10 erg/s/cm2 for N180
+    + Not corrected for extinction
+  + D = 50 kpc => 4 \pi D^2 = 2.991e+47
+    + => L(Ha) = 2.0e38 and 1.3e+38
+    + So these are 15 and 20x Orion
+    + This plugs a useful gap in our samples
+  + This is confirmed by stellar census
+    + McLeod:2019a sections 3.1 and 3.2
+    + Q(H) = 2.5e50 s^-1 for N44
+    + Q(H) = 1.3e50 s^-1 for N180
+  + Note that there are clear sub-regions to each of these regions
+    + N44 A has 3.2e49 (O7III, O5V, O8V)
+    + N44 B has 2.6e48 (O9.5III)
+    + N44 B1 has 7.6e48 (O8III)
+    + N44 C has 3.3e49 (O5III, O8V, O9.5V)
+    + N44 D has 1.7e49 (O5V)
+    + N44 Main has the rest: 1.6e50 (WN4b + O8.5I + ...)
+  + N180 similarly has 4 sub-regions
+    + Some may be too small to measure the structure function
+    + And some seem to be badly affected by extinction
+  + There is also a per-region L(Ha) analysis
+    + McLeod:2019a Table 7 that compares the Q(H) from stars and from recombinations, finding escape fraction of 0.3 to 0.8
 
+**** Data samples
++ [2021-05-04 Tue] I am downloading 3 sample datasets:
+  1. LMC-N44 strip: ADP.2016-08-11T18:26:36.424
+  2. LMC-N180 strip: ADP.2016-08-12T09:14:55.932
+  3. SMC-NGC346 square: ADP.2017-10-16T11:04:19.247
++ The NGC 346 data is a restricted FOV of 1.5 arcmin in center of cluster, but it seems much higher data quality than the others 
+
+
+
+      
 *** Relevant papers on our extragalactic H II regions
 
 + Munoz-Tunon:1996a has TAURUS spectroscopy of NGC 595 and 588
