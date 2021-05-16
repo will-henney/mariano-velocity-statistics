@@ -292,4 +292,6 @@ np.sqrt(sig2_sii)
 #
 # *But this also implies that the true $\sigma$ is larger than the value that we measure*
 
+# Also, note that the intermediate part of the structure function is identical between Hα and [S II], with both having a slope of 2/3 and the same normalization: $B(r) = 25\ (\mathrm{km/s})^2$ at 1 pc.
+
 

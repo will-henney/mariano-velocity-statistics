@@ -337,6 +337,25 @@ The fact that it keeps climbing at all scales implies that the true correlation 
 
 *But this also implies that the true $\sigma$ is larger than the value that we measure*
 
+
+Also, note that the intermediate part of the structure function is identical between Hα and [S II], with both having a slope of 2/3 and the same normalization: $B(r) = 25\ (\mathrm{km/s})^2$ at 1 pc.
+
+## An idea about how to improve the structure function fits
+
+1. What we could do is to incorporate the noise term and the seeing into the structure function model.
+    1. In some cases, the noise level can be determined independently.  For instance, in the MUSE data by propagation of errors in the moment calculations.
+2. Also, we can include the total $\sigma^2$ and the $\ell_0$ as fitting parameters, rather than determining them directly from the data
+    1. The reason for doing this is to allow a fit where $\ell_0$ is bigger than our maximum separation (although of course neither $\ell_0$ nor $\sigma$ will be well-constrained in this case).
+3. So we now have five parameters:
+    1. $\sigma$
+    2. $\ell_0$
+    3. $m$
+    4. Seeing FWHM
+    5. Noise level
+4. We can maybe use MCMC to do the model fitting.  Then we can use priors to constrain some of the parameters. And we can construct the posterior distributions of all the parameters
+    1. In the case of the sparsely sampled observations, such as Hubble V and X, we will probably find severe degeneracies.  For instance between $m$ and the noise and the seeing. 
+    2. But at least we will be able to quantify this
+
 ```python
 
 ```
