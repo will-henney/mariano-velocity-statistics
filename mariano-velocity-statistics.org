@@ -639,6 +639,9 @@ CLOSED: [2021-01-26 Tue 19:36]
    - Start off with the MUSE maps for 30 Dor
      - [X] See jupyter notebook for 30 Dor
    - We already have results for Orion, but we could extend them to larger scales using the orion treasury images of the entire nebula
+** Effects of seeing on the structure function
++ Simple case: constant brightness
+  + This should give a lower bound on the effect
 ** General thoughts on the strucfuncs, spatial power spectrum, delta variance, etc
 + The delta variance gives something that is very similar to the structure function for the velocity
   + We see a rising curve at small separations,
