@@ -642,6 +642,9 @@ CLOSED: [2021-01-26 Tue 19:36]
 ** Effects of seeing on the structure function
 + Simple case: constant brightness
   + This should give a lower bound on the effect
+  + [[file:Effects of seeing on structure function.pdf]]
++ [2021-07-09 Fri] I had previously done a similar calculation in [[file:~/Dropbox/OrionStats/NewMoments/turb-velocity-stats.org][file:~/Dropbox/OrionStats/NewMoments/turb-velocity-stats.org]]
+  + It seems to be exactly the same result, which is encouraging
 ** General thoughts on the strucfuncs, spatial power spectrum, delta variance, etc
 + The delta variance gives something that is very similar to the structure function for the velocity
   + We see a rising curve at small separations,
