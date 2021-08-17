@@ -9,6 +9,20 @@
 
 *** Other things to do maybe
 
+**** Can we use the PHANGS datasets?
++ https://sites.google.com/view/phangs/home/data
++ Closest galaxies are at 5 Mpc, which is 5x further away than NGC 595+604 in M33, and 10x further away than Hubble V and X
++ So we can only look at very large regions
++ They have gas and star kinematics, so we could remove the rotation curve by taking the difference
++ Also, there are ALMA observations of CO that we could use
++ Headlight cloud in NGC 628 has L(Ha) = 6.3e39 erg/s
+  + Herrera:2020i
+  + E(Ha) = h c / 6563 ang = 3.02673387238e-12 erg
+  + => Q(H) = 6.3e39 / 3e-12 = 2e51 phot/s, so similar to 30 Dor
+  + Also has R = 140 pc and \sigma = 50 km/s, supposedly
+  + D = 9.6 Mpc, so 1 arcsec = 46 pc => R = 3 arcsec
+    + That is going to make it very hard to measure the structure function since seeing = 0.7 arcsec, so only 16 independent pixels
+
 **** TODO Spatial variation in the structure function
 + Once we have found the correlation length, L_0, then we can look at the large-scale (> L_0) POS variation of the small-scale (< L_0) fluctuations.
 + In particular variation in
