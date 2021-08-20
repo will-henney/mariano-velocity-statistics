@@ -891,6 +891,9 @@ CLOSED: [2021-01-26 Tue 19:36]
   + Note that there are higher \sigma at the positions of the globule heads:
     + Highest is 64 km/s raw value => sqrt(64**2 - 47.8**2) = 42 km/s
     + But these are a negligible fraction of the area
+  + Higher resolution spectroscopy from Danforth:2003m
+    + For Ha they find a corrected FWHM of 23.8 km/s => \sigma(LOS) = 10.1 km/s
+    + This consistent with the MUSE value, but is much more precise
 + Orion
 + M8
 
