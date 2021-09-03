@@ -40,7 +40,7 @@ vha = hdu["DATA"].data.astype("float")
 
 ```python
 iha = fits.open(
-    "data/NGC346/ngc346-hi-6563-bin01-vmean.fits"
+    "data/NGC346/ngc346-hi-6563-bin01-sum.fits"
 )["DATA"].data.astype("float")
 ```
 
@@ -156,7 +156,7 @@ ax.set(
 
 I am using the same y-axis scale as for 30 Dor.  The structure function starts off the same at small separations, but levels off at a much lower value.
 
-Strangely, the weighted and unweighted values are almost identical. 
+I have now fixed the issue with the weighted version.
 
 
 ### Save the Hα structure function to JSON file
