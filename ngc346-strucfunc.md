@@ -238,6 +238,7 @@ sf_sii["Weighted sigma^2"] = np.average(
 ```python
 {k: sf_sii[k] for k in sf_sii 
  if "sigma" in k or "mean" in k}
+
 ```
 
 ```python

@@ -7,6 +7,25 @@
 
 ** Return to project 2021
 
+*** Figure for the Javier paper
++ It would be good to have a figure that
+  1. Shows images of each H II region in our sample
+  2. Shows the field used for calculating structure function
+  3. Maybe even shows some velocity maps
+
+
+**** Collecting suitable images
++ Orion
++ Lagoon
++ Carina
++ 30 Dor
++ Hub V
++ Hub X
++ NGC 595
+  + https://sci.esa.int/web/hubble/-/61039-ngc-595-a-diffuse-nebula-in-the-triangulum-galaxy
++ NGC 604
+  + https://hubblesite.org/contents/media/images/2003/30/1423-Image.html
+  
 *** Other things to do maybe
 
 **** Can we use the PHANGS datasets?
