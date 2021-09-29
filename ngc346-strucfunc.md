@@ -55,6 +55,29 @@ vha[m] = np.nanmean(vha)
 iha /= iha.max()
 ```
 
+Make a map of the velocity field.
+
+```python
+from matplotlib import pyplot as plt
+plt.style.use([
+    "seaborn-poster",
+])
+fig, ax = plt.subplots(figsize=(8, 6))
+im = ax.imshow(
+    vha - np.nanmean(vha), 
+    origin="lower",
+    vmin=-15, vmax=15,
+    cmap="RdBu_r",
+)
+fig.colorbar(im).set_label("km/s")
+ax.set(
+    xlim=[10, 340],
+    ylim=[10, 315],
+)
+ax.set_aspect("equal")
+
+```
+
 ## Hα structure function
 
 ### Calculate the structure function
