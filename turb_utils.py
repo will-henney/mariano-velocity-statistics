@@ -84,6 +84,7 @@ def make_extended(
         rr = rr2 ** 0.5
         # Also save circular version to use with correlation_length
         rcirc = np.hypot(xx, yy)
+        rcirc[rcirc == 0.0] = np.nan
     else:
         # Circular whenever ellip == 1
         rr = (xx ** 2 + yy ** 2) ** 0.5
