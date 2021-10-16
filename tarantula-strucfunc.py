@@ -34,7 +34,7 @@ vv[m] = np.nanmean(vv)
 sb /= sb.max()
 
 
-rslt = strucfunc.strucfunc_numba_parallel(vv, wmap=sb, dlogr=0.15)
+rslt = strucfunc.strucfunc_numba_parallel(vv, wmap=sb, dlogr=0.05)
 
 good = (~m) & (sb > 0.001)
 rslt["Unweighted mean velocity"] = np.mean(vv[good])
