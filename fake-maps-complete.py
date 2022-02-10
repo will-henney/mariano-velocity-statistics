@@ -83,13 +83,13 @@ def taper(arr, scale):
 # Function to add a periodic undulation to the fluctuations:
 
 # +
-def undulate(arr, wavelength=0.5, angle=45.0 * u.deg, amplitude=1.0):
+def undulate(arr, wavelength=128, angle=45.0 * u.deg, amplitude=1.0):
     ny, nx = arr.shape
     xx, yy = np.meshgrid(
-        np.linspace(-1.0, 1.0, nx),
-        np.linspace(-1.0, 1.0, ny),        
+        np.arange(nx),
+        np.arange(ny),        
     )
-    ss = xx * np.cos(angle) + yy * np.sin(angle)
+    ss = xx * np.cos(angle) - yy * np.sin(angle)
     undulation = amplitude * np.sin(2 * np.pi * u.radian * ss / wavelength)
     return arr + undulation
 
@@ -136,11 +136,11 @@ mask = sfs_npt[0]["N pairs"] > 0
 r = 10**sfs_npt[0]["log10 r"][mask]
 
 Bs = [_["Unweighted B(r)"][mask] for _ in sfs_npt]
-Bm = np.mean(np.stack(Bs), axis=0)
+Bm0 = np.mean(np.stack(Bs), axis=0)
 
 for _B in Bs:
     ax.plot(r, _B, marker=".")
-ax.plot(r, Bm, linewidth=4, color="k")
+ax.plot(r, Bm0, linewidth=4, color="k")
 
 rgrid = np.logspace(0.0, 2.0)
 
@@ -177,7 +177,7 @@ vms_tap = [
                 2 * N, powerlaw=2.0 + m, 
                 ellip=0.5, theta=45, 
                 correlation_length=r0,
-                randomseed=2021_10_08,
+                randomseed=2022_02_09,
             ),
             kernel, 
             boundary="wrap",
@@ -211,6 +211,7 @@ r = 10**sfs_tap[0]["log10 r"][mask]
 Bs = [_["Unweighted B(r)"][mask] for _ in sfs_tap]
 Bm = np.mean(np.stack(Bs), axis=0)
 
+ax.plot(r, Bm0, linewidth=6, color="k", alpha=0.3)
 for _B in Bs:
     ax.plot(r, _B, marker=".")
 ax.plot(r, Bm, linewidth=4, color="k")
@@ -234,14 +235,21 @@ ax.set(
 
 # Nevertheless, we get a strong downwards hook at the largest separations in all 4 structure functions.
 
+# The gray line is the result for the basic model, without the tapering but also without seeing. 
+#
+# It can be seen thhat the tapering has hardly any effect on either the total sigma,  or the derived correlation lengrh.
+
 # ## Periodic undulation 
 
 r0 = 32.0
 N = 256
 m = 1.2
 
+# I am going to do the normalization before adding the periodic undulation, so that the small-scale part of the structure function is more comparable. 
+
+wav0 = 0.75 * N
 vms_und = [
-    normalize(undulate(_, wavelength=1.5, angle=45, amplitude=4.0))
+    undulate(normalize(_), wavelength=wav0, angle=-45, amplitude=1.0)
     for _ in 
     split_square_in_4(
         convolve_fft(
@@ -249,7 +257,7 @@ vms_und = [
                 2 * N, powerlaw=2.0 + m, 
                 ellip=0.5, theta=45, 
                 correlation_length=r0,
-                randomseed=2021_10_08,
+                randomseed=2022_02_09,
             ),
             kernel, 
             boundary="wrap",
@@ -266,6 +274,8 @@ imshow_kwds = dict(origin="lower", vmin=-3, vmax=3, cmap="RdBu_r")
 for vm, ax in zip(vms_und, axes.flat):
     im = ax.imshow(vm, **imshow_kwds)
 
+# We can now see the red-blue diagonal bands across the maps. I used an amplitude of 1, so given thah the average of sine-squared is 0.5, this should increase the total sigma-squared by 50%
+
 sfs_und = [
     strucfunc.strucfunc_numba_parallel(vm, dlogr=0.05)
     for vm in vms_und
@@ -281,6 +291,7 @@ r = 10**sfs_und[0]["log10 r"][mask]
 Bs = [_["Unweighted B(r)"][mask] for _ in sfs_und]
 Bm = np.mean(np.stack(Bs), axis=0)
 
+ax.plot(r, Bm0, linewidth=6, color="k", alpha=0.3)
 for _B in Bs:
     ax.plot(r, _B, marker=".")
 ax.plot(r, Bm, linewidth=4, color="k")
@@ -289,17 +300,28 @@ rgrid = np.logspace(0.0, 2.0)
 
 for scale in 0.02, 0.08:
     ax.plot(rgrid, scale * rgrid**m, color="0.8")
+    ax.plot(rgrid, 0.5 * scale * rgrid**2, color="0.9")
+
 
 ax.axhline(1.0, color="k", linestyle="dotted")
 ax.axvline(r0, color="k", linestyle="dotted")
 ax.axvline(r0 / 2, color="k", linestyle="dotted")
 
-ax.axvline(N / 2, color="k", linestyle="dashed")
-ax.axvline(N / 6, color="k", linestyle="dashed")
+ax.axvline(wav0 / 2, color="k", linestyle="dashed")
+ax.axvline(wav0, color="k", linestyle="dashed", alpha=0.5, lw=4)
+ax.axvline(3 * wav0 / 2, color="k", linestyle="dashed")
 ax.set(
     xscale="log", yscale="log",
-    ylim=[8e-3, 4],
+    ylim=[8e-3, 6],
 );
 # -
+
+# We can see the peaks at lambda/2 and 3 lambda/2, together with the minimum at lambda. However, the variations are small because of the averaging over orientation.
+#
+# With this normalization, we do not change the derived value of r0 because the small scales are unaffected. The sin wave is linear for small separations, which means `m=2`, which has little effect because the turbulent slope is shallower.
+
+# ## Demonstration of model structure functions
+#
+#
 
 
