@@ -1,6 +1,7 @@
 ---
 jupyter:
   jupytext:
+    encoding: '# -*- coding: utf-8 -*-'
     formats: ipynb,py:light,md
     text_representation:
       extension: .md
@@ -8,7 +9,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.11.1
   kernelspec:
-    display_name: Python 3
+    display_name: Python 3 (ipykernel)
     language: python
     name: python3
 ---
@@ -24,8 +25,8 @@ from astropy.io import fits
 import sys
 sys.path.append("../muse-strucfunc")
 import strucfunc
-
 ```
+
 
 Load the moment maps from FITS files
 
@@ -75,15 +76,28 @@ ax.set(
     ylim=[10, 315],
 )
 ax.set_aspect("equal")
-
 ```
+
 
 ## Hα structure function
 
 ### Calculate the structure function
 
+
+#### Revisiting 2021-10-15
+
+Trim of the edges of the map.  Use the same boundaries as in the above image.
+
 ```python
-sf = strucfunc.strucfunc_numba_parallel(vha, wmap=iha)
+trim = (slice(10, 340), slice(10, 315))
+```
+
+```python
+vha[trim].shape
+```
+
+```python
+sf = strucfunc.strucfunc_numba_parallel(vha[trim], wmap=iha[trim], dlogr=0.05)
 ```
 
 ```python
@@ -91,7 +105,7 @@ sf
 ```
 
 ```python
-sig2 = np.var(vha)
+sig2 = np.var(vha[trim])
 sig2
 ```
 
@@ -101,8 +115,8 @@ sf["Unweighted mean velocity"] = np.mean(vha[good])
 sf["Unweighted sigma^2"] = np.var(vha[good])
 v0w = sf["Weighted mean velocity"] = np.average(vha, weights=iha)
 sf["Weighted sigma^2"] = np.average((vha - v0w)**2, weights=iha)
-
 ```
+
 
 ```python
 {k: sf[k] for k in sf if "sigma" in k or "mean" in k}
@@ -205,8 +219,6 @@ class MyEncoder(json.JSONEncoder):
 jsonfilename = f"ngc346-strucfunc-ha.json"
 with open(jsonfilename, "w") as f:
     json.dump(sf, fp=f, indent=3, cls=MyEncoder)
-
-
 ```
 
 ### Hα structure function conclusions
@@ -227,8 +239,6 @@ isii = fits.open(
 vsii = fits.open(
     "data/NGC346/ngc346-sii-6716-bin01-vmean.fits"
 )["DATA"].data.astype("float")
-
-
 ```
 
 ```python
@@ -261,8 +271,8 @@ sf_sii["Weighted sigma^2"] = np.average(
 ```python
 {k: sf_sii[k] for k in sf_sii 
  if "sigma" in k or "mean" in k}
-
 ```
+
 
 ```python
 sf_sii["sep, pc"] = 10**sf_sii["log10 r"] * pix_pc.value

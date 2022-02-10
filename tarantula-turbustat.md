@@ -1,6 +1,7 @@
 ---
 jupyter:
   jupytext:
+    encoding: '# -*- coding: utf-8 -*-'
     formats: ipynb,py:light,md
     text_representation:
       extension: .md
@@ -8,7 +9,7 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.11.1
   kernelspec:
-    display_name: Python 3
+    display_name: Python 3 (ipykernel)
     language: python
     name: python3
 ---
@@ -34,8 +35,8 @@ fitsfilename = {
 datadir = Path("data/Tarantula/MUSE_R136toWill")
 hdulist = fits.open(datadir / fitsfilename["ha"])
 hdulist.info()
-
 ```
+
 
 ```python
 sb = hdulist[1].data
@@ -194,8 +195,8 @@ ax.set(
 #    yscale="log",
 #    ylim=[1e-3, 1.0],
 )
-
 ```
+
 
 That is exactly the same as the seaborn version, and makes perfect sense: the distribution is pulled up at the high brightness because of the brightness weighting.  Note that the log-normal fit is by eye.  
 
@@ -425,6 +426,9 @@ def bfunc(r, r0, sig2, m):
     "Theoretical structure function"
     C = 1.0 / (1.0 + (r/r0)**m)
     return 2.0*sig2*(1 - C)
+```
+
+```python
 
 ```
 

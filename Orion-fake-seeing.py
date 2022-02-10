@@ -109,13 +109,14 @@ fits.PrimaryHDU(
     data=vha,
 ).writeto(outpath / "doh-ha-vmean-orig.fits", overwrite=True)
 
-# ### Calcuate the structure function
+# ### Calculate the structure function
 #
 # This is now done separately in `calculate-strucfunc.py`, which I run in a terminal.  The main reason is that the parallel multitreading in numba does not work out of the box in the jupyterlab app. 
 
 import json
 
 
+# + tags=[]
 def values2arrays(d):
     for k in d.keys():
         if type(d[k]) == list:
@@ -123,6 +124,7 @@ def values2arrays(d):
     return d
 
 
+# + tags=[]
 with open(outpath / "doh-ha-strucfunc-orig.json") as f:
     sf = values2arrays(json.load(f))
 
@@ -369,7 +371,8 @@ def bfac(x):
     
     Where s0 is RMS seeing width and r0 is correlation length
     """
-    return 1 / (1 + 4*x**2)
+    #return 1 / (1 + 4*x**2)
+    return np.exp(-x)
 
 
 # -
@@ -382,7 +385,7 @@ for width in widths:
     r0 = sfs[width]["r0, pc"] / pix_pc.value
     ax.plot(
         r[mm], 
-        bfac(width / r0) * rtheo(r[mm], width, 1.5, a=0.75), 
+        bfac(width / r0) * rtheo(r[mm], width, 1.7, a=0.75), 
         linestyle="dashed", color=c
     )
     rat0 = np.interp(2*width, r[mm], rat[mm])

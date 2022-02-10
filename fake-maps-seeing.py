@@ -9,7 +9,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -364,14 +364,16 @@ ax.set(
 
 # +
 vms_t = split_square_in_4(
-    make_extended(
-        2 * N, powerlaw=2.0 + m, 
-        ellip=0.5, theta=45, 
-        correlation_length=r0,
-        randomseed=2021_10_08,
+    normalize(
+        make_extended(
+            2 * N, powerlaw=2.0 + m, 
+            ellip=0.5, theta=45, 
+            correlation_length=r0,
+            randomseed=2021_10_08,
+        )
     )
 )
-vms_t = [normalize(_) for _ in vms_t]
+# vms_t = [normalize(_) for _ in vms_t]
 
 fig, axes = plt.subplots(
     2, 2, 
@@ -427,19 +429,34 @@ widths = [1, 2, 4, 8, 16, 32]
 vmap_nps = {}
 for width in widths:
     kernel = Gaussian2DKernel(x_stddev=width)
-    vmap_nps[width] = [convolve_fft(normalize(_), kernel) 
-                       for _ in split_square_in_4(vmap2x2_t)] 
+    vmap_nps[width] = split_square_in_4(
+        convolve_fft(normalize(vmap2x2_t), kernel, boundary="wrap")
+    )
+#   vmap_nps[width] = [convolve_fft(normalize(_), kernel) 
+#                      for _ in split_square_in_4(vmap2x2_t)] 
 
-ncols = len(widths)
+# +
+ncols = len(widths) + 1
 nrows = 4
 fig, axes = plt.subplots(
-    nrows, ncols, figsize=(12, 8), sharex=True, sharey=True,
+    nrows, ncols, figsize=(8, 5.1), sharex=True, sharey=True,
 )
+for j, vm in enumerate(vms_t):
+    im = axes[j, 0].imshow(vm, **imshow_kwds)
+axes[0, 0].set_title("original")
 for i, width in enumerate(widths):
     for j, vm in enumerate(vmap_nps[width]):
-        im = axes[j, i].imshow(vm, **imshow_kwds)
-    axes[0, i].set_title(str(width))
+        im = axes[j, i + 1].imshow(vm, **imshow_kwds)
+    axes[0, i + 1].set_title(fr"$s_0 = {width}$")
+    
+for ax in axes.flat:
+    ax.set(xticks=[], yticks=[])
+sns.despine(left=True, bottom=True)
+fig.tight_layout(h_pad=0.2, w_pad=0.2)
+fig.savefig("fake-seeing-nonp-thumbnails.pdf");
 
+
+# -
 
 def values2arrays(d):
     for k in d.keys():
@@ -450,16 +467,21 @@ def values2arrays(d):
 
 # Try and load the structure function from JSON files.  If that fails, then recalculate the structure functions and save to JSON files.
 
-try: 
+use_cached_strucfunc = True
+
+if use_cached_strucfunc:
     sfs_npt_s = {
         width: [
-            values2arrays(json.load(open(fn))) for fn in Path(".").glob(
-                f"fake-tapered-nonp-s0-{width:03d}-*-strucfunc.json"
+            values2arrays(json.load(open(fn))) 
+            for fn in sorted(
+                Path(".").glob(
+                    f"fake-tapered-nonp-s0-{width:03d}-*-strucfunc.json"
+                )
             )
         ]
         for width in widths
     }
-except Exception as e:
+else:
     sfs_npt_s = {
         width: [
             strucfunc.strucfunc_numba_parallel(vm, dlogr=0.05)
@@ -536,8 +558,19 @@ for width, c in zip(widths, colors):
         [_["Unweighted B(r)"][mask] for _ in sfs_npt_s[width]]
     ), axis=0)
     rat = B / Bm
+    rat_individs = [
+        _this["Unweighted B(r)"][mask] / _B
+        for _this, _B in zip(sfs_npt_s[width], Bs)
+    ]
+    rat_sigma = np.std(np.stack(rat_individs), axis=0)
     rat_maxes.append(np.max(rat))
     line = ax.plot(r, rat, marker=".", color=c)
+    ax.fill_between(
+        r, rat - rat_sigma, rat + rat_sigma,
+        color=c, alpha=0.2, linewidth=0,
+    )
+    #for _rat in rat_individs:
+    #    ax.plot(r, _rat, color=c, alpha=0.2)
     rat0 = np.interp(2*width, r, rat)
     #c = line[0].get_color()
     ax.plot(2*width, rat0, marker="o", ms=15, color=c)
@@ -597,10 +630,13 @@ ax.set(
     ylabel="Reduction in $B(r)$",
 )
 sns.despine()
+fig.tight_layout()
 fig.savefig("fake-seeing-nonp-reduction.pdf");
 # -
 
 # Finding a new functional form for `bfunc()`.  Previously I had had $\bigl(1 + 4 (s_0/r_0)^2\bigr)^{-1}$ but now I have $\exp(-s_0 / r_0)$. This works much better for this synthetic case, although it is slightly worse than the first form for Orion.
+
+# The shaded area is now the std of the results from the 4 individual panels.
 
 fig, ax = plt.subplots()
 ax.plot(widths, rat_maxes, marker="s")
@@ -613,6 +649,421 @@ ax.set(
     ylim=[0.0, 1.0],
     xscale="log",
 )
+
+
+# ## Effects of the finite map size
+#
+# We can try reducing the size of the box for a field with a given $r_0$ and see if $r_0$ is affected:
+
+def split4(arrs):
+    """Split each 2D array in list into 4 quadrants
+    
+    Returns new list of all the quadrants from each input array.
+    Requires that all axis lengths be even.
+    """
+    rslt = []
+    for arr in arrs:
+        for vsplit in np.vsplit(arr, 2):
+            rslt.extend(np.hsplit(vsplit, 2))
+    return rslt
+
+
+a = np.arange(16).reshape((4, 4))
+split4(split4([a]))
+
+
+# This function splits up the whole image into sub-images that are smaller (linearly) by `2**niter` and calculates the mean and std of the $\sigma^2$ and $r_0$ of them:
+
+def split4_and_strucfuncs(arrs, niter=1):
+    subarrs = arrs.copy()
+    for i in range(niter):
+        subarrs = split4(subarrs)
+    BB = []
+    sig2s = []
+    r0s = []
+    for subarr in subarrs:
+        sf = strucfunc.strucfunc_numba_parallel(subarr, dlogr=0.05)
+        mask = sf["N pairs"] > 0
+        B = sf["Unweighted B(r)"][mask]
+        BB.append(B)
+        r = 10**sf["log10 r"][mask]
+        sig2 = np.var(subarr)
+        sig2s.append(sig2)
+        try:
+            i0 = np.argmax(r[B <= sig2])
+            i1 = max(0, i0 - 2)
+            i2 = min(len(B) - 1, i0 + 2)
+            r0 = np.interp(sig2, B[i1:i2], r[i1:i2])
+        except:
+            r0 = np.nan
+        r0s.append(r0)
+    Bmean = np.mean(np.stack(BB), axis=0)
+    Bsig = np.std(np.stack(BB), axis=0)
+    return {
+        #"subarrs": subarrs,
+        "r": r,
+        "Bmean": Bmean,
+        "Bsig": Bsig,
+        "sig2mean": np.mean(sig2s),
+        "sig2sig": np.std(sig2s),
+        "r0mean": np.nanmean(r0s),
+        "r0sig": np.nanstd(r0s),
+    }
+
+
+splits = {}
+for k in [0, 1, 2, 3, 4, 5]:
+    splits[2**k] = split4_and_strucfuncs(vms_t, k)
+
+wdata = {
+    "n": [], "r0mean": [], "r0sig": [],
+    "sig2mean": [], "sig2sig": [],
+}
+for ii in splits.keys():
+    wdata["n"].append(256 / ii)
+    for v1 in "r0", "sig2":
+        for v2 in "mean", "sig":
+            v = v1 + v2
+            wdata[v].append(splits[ii][v])
+wdata = values2arrays(wdata)
+wdata["r0mean"] /= true_r0
+wdata["r0sig"] /= true_r0
+
+bcolors = cmr.take_cmap_colors(
+    'cmr.flamingo', len(splits.values()), 
+    cmap_range=(0.05, 0.75),
+)
+
+# +
+fig, ax = plt.subplots(
+    figsize=(8, 5),
+)
+
+whitebox = dict(color="white", alpha=1.0, pad=0.0)
+L = 256
+N = 2
+for split, bcolor in zip(splits.values(), bcolors):
+    line = ax.plot(split["r"], split["Bmean"], marker=".", color=bcolor)
+    c = line[0].get_color()
+    ax.fill_between(
+        split["r"], 
+        split["Bmean"] - split["Bsig"], 
+        split["Bmean"] + split["Bsig"],
+        color=c, alpha=0.1, linewidth=0, zorder=-1,
+    )
+    x, y = split["r"][-4], split["Bmean"][-4] * 1.7
+    ax.text(
+        x, y, (rf"$N = {N**2}$" "\n" rf"$L = {L}$"), 
+        color=c, ha="center", va="bottom",
+        fontsize="x-small",
+        bbox=whitebox,
+    )
+    L //= 2
+    N *= 2
+#ax.plot(r, Bm, linewidth=4, color="k")
+
+rgrid = np.logspace(0.0, 2.0)
+
+for scale in 0.025, 0.1:
+    ax.plot(rgrid, scale * rgrid**m, linestyle="dotted", color="k")
+
+ax.axhline(1.0, color="k", linestyle="dotted")
+ax.axvline(true_r0, color="k", linestyle="dotted")
+ax.text(
+    true_r0, 0.03, 
+    rf"$r_0 = {true_r0:.1f}$",
+    color="k", fontsize="x-small", ha="center", va="bottom",
+    bbox=whitebox,
+)
+ax.set(
+    xscale="log", yscale="log",
+    ylim=[0.02, 3.9],
+    xlabel=r"Separation, $r$, pixels",
+    ylabel=r"$B(r) \, / \, \sigma^2$",
+)
+sns.despine()
+fig.tight_layout()
+fig.savefig("fake-finite-box-strucfunc.pdf");
+
+# +
+NN = 512
+fig, axes = plt.subplots(2, 2, figsize=(8, 8))
+for ax, N in zip(axes.flat, [2, 4, 8, 16]):
+    ax.imshow(normalize(vmap2x2_t), **imshow_kwds)
+    ax.set(xticks=[], yticks=[])
+    L = NN // N
+    for i in range(N + 1):
+        ax.axhline(i * L, color="w")
+        ax.axvline(i * L, color="w")
+    ax.text(
+        0, NN,
+        (rf"$N = {N**2}$" "\n" rf"$L = {L}$"), 
+        color="k", ha="left", va="top",
+        fontsize="small",
+        bbox=whitebox,
+    )
+
+sns.despine(left=True, bottom=True)
+fig.tight_layout(pad=0, h_pad=0.0, w_pad=0.0)
+fig.savefig("fake-finite-box-images.pdf");
+# -
+
+N, m, r0
+
+# +
+vms_r16 = split_square_in_4(
+    normalize(
+        make_extended(
+            2 * N, powerlaw=2.0 + m, 
+            ellip=0.5, theta=45, 
+            correlation_length=16,
+            randomseed=2021_10_08,
+        )
+    )
+)
+
+splits_r16 = {}
+for k in [0, 1, 2, 3, 4, 5]:
+    splits_r16[2**k] = split4_and_strucfuncs(vms_r16, k)
+
+# +
+fig, ax = plt.subplots(
+    figsize=(8, 4),
+)
+
+for split in splits_r16.values():
+    line = ax.plot(split["r"], split["Bmean"], marker=".")
+    c = line[0].get_color()
+    ax.fill_between(
+        split["r"], 
+        split["Bmean"] - split["Bsig"], 
+        split["Bmean"] + split["Bsig"],
+        color=c, alpha=0.1, linewidth=0, zorder=-1,
+    )
+#ax.plot(r, Bm, linewidth=4, color="k")
+
+rgrid = np.logspace(0.0, 2.0)
+
+for scale in 0.05, 0.2:
+    ax.plot(rgrid, scale * rgrid**m, linestyle="dotted", color="k")
+
+_split = splits_r16[1]
+true_r0_r16 = np.interp(1.0, _split["Bmean"][:-4], _split["r"][:-4])
+
+ax.axhline(1.0, color="k", linestyle="dotted")
+ax.axvline(true_r0_r16, color="k", linestyle="dotted")
+ax.set(
+    xscale="log", yscale="log",
+    ylim=[0.02, 4],
+)
+sns.despine()
+fig.tight_layout();
+# -
+
+wdata_r16 = {
+    "n": [], "r0mean": [], "r0sig": [],
+    "sig2mean": [], "sig2sig": [],
+}
+for ii in splits_r16.keys():
+    wdata_r16["n"].append(256 / ii)
+    for v1 in "r0", "sig2":
+        for v2 in "mean", "sig":
+            v = v1 + v2
+            wdata_r16[v].append(splits_r16[ii][v])
+wdata_r16 = values2arrays(wdata_r16)
+wdata_r16["r0mean"] /= 0.5 * true_r0
+wdata_r16["r0sig"] /= 0.5 * true_r0
+
+# +
+vms_m15 = split_square_in_4(
+    normalize(
+        make_extended(
+            2 * N, powerlaw=2.0 + 1.5, 
+            ellip=0.5, theta=45, 
+            correlation_length=16,
+            randomseed=2021_10_08,
+        )
+    )
+)
+
+splits_m15 = {}
+for k in [0, 1, 2, 3, 4, 5]:
+    splits_m15[2**k] = split4_and_strucfuncs(vms_m15, k)
+
+# +
+fig, ax = plt.subplots(
+    figsize=(8, 4),
+)
+
+for split in splits_m15.values():
+    line = ax.plot(split["r"], split["Bmean"], marker=".")
+    c = line[0].get_color()
+    ax.fill_between(
+        split["r"], 
+        split["Bmean"] - split["Bsig"], 
+        split["Bmean"] + split["Bsig"],
+        color=c, alpha=0.1, linewidth=0, zorder=-1,
+    )
+#ax.plot(r, Bm, linewidth=4, color="k")
+
+rgrid = np.logspace(0.0, 2.0)
+
+for scale in 0.025, 0.1:
+    ax.plot(rgrid, scale * rgrid**1.5, linestyle="dotted", color="k")
+
+_split = splits_m15[1]
+true_r0_m15 = np.interp(1.0, _split["Bmean"][:-4], _split["r"][:-4])
+
+ax.axhline(1.0, color="k", linestyle="dotted")
+ax.axvline(true_r0_m15, color="k", linestyle="dotted")
+ax.set(
+    xscale="log", yscale="log",
+    ylim=[0.02, 4],
+)
+sns.despine()
+fig.tight_layout();
+# -
+
+wdata_m15 = {
+    "n": [], "r0mean": [], "r0sig": [],
+    "sig2mean": [], "sig2sig": [],
+}
+for ii in splits_m15.keys():
+    wdata_m15["n"].append(256 / ii)
+    for v1 in "r0", "sig2":
+        for v2 in "mean", "sig":
+            v = v1 + v2
+            wdata_m15[v].append(splits_m15[ii][v])
+wdata_m15 = values2arrays(wdata_m15)
+wdata_m15["r0mean"] /= true_r0_m15
+wdata_m15["r0sig"] /= true_r0_m15
+
+# +
+vms_m07 = split_square_in_4(
+    normalize(
+        make_extended(
+            2 * N, powerlaw=2.0 + 0.666, 
+            ellip=0.5, theta=45, 
+            correlation_length=16,
+            randomseed=2021_10_08,
+        )
+    )
+)
+
+splits_m07 = {}
+for k in [0, 1, 2, 3, 4, 5]:
+    splits_m07[2**k] = split4_and_strucfuncs(vms_m07, k)
+
+# +
+fig, ax = plt.subplots(
+    figsize=(8, 4),
+)
+
+for split in splits_m07.values():
+    line = ax.plot(split["r"], split["Bmean"], marker=".")
+    c = line[0].get_color()
+    ax.fill_between(
+        split["r"], 
+        split["Bmean"] - split["Bsig"], 
+        split["Bmean"] + split["Bsig"],
+        color=c, alpha=0.1, linewidth=0, zorder=-1,
+    )
+#ax.plot(r, Bm, linewidth=4, color="k")
+
+rgrid = np.logspace(0.0, 2.0)
+
+for scale in 0.15, 0.6:
+    ax.plot(rgrid, scale * rgrid**0.666, linestyle="dotted", color="k")
+
+_split = splits_m07[1]
+true_r0_m07 = np.interp(1.0, _split["Bmean"][:-4], _split["r"][:-4])
+
+ax.axhline(1.0, color="k", linestyle="dotted")
+ax.axvline(true_r0_m07, color="k", linestyle="dotted")
+ax.set(
+    xscale="log", yscale="log",
+    ylim=[0.02, 4],
+)
+sns.despine()
+fig.tight_layout();
+# -
+
+wdata_m07 = {
+    "n": [], "r0mean": [], "r0sig": [],
+    "sig2mean": [], "sig2sig": [],
+}
+for ii in splits_m07.keys():
+    wdata_m07["n"].append(256 / ii)
+    for v1 in "r0", "sig2":
+        for v2 in "mean", "sig":
+            v = v1 + v2
+            wdata_m07[v].append(splits_m07[ii][v])
+wdata_m07 = values2arrays(wdata_m07)
+wdata_m07["r0mean"] /= true_r0_m07
+wdata_m07["r0sig"] /= true_r0_m07
+
+
+# Empirical fit to the finite-box effect.  This turns out to be very simple:
+
+def finite_box_effect(L_over_r0, scale=3.6):
+    return 1 - np.exp(-L_over_r0 / scale)
+
+
+# +
+fig, (ax1, ax2) = plt.subplots(
+    2, 1,
+    sharex=True, sharey=True,
+    figsize=(8, 8),
+)
+for data, corr_length in [
+    [wdata_r16, true_r0_r16],
+    [wdata, true_r0], 
+    [wdata_m15, true_r0_m15], 
+    [wdata_m07, true_r0_m07], 
+]:
+    x = data["n"] / corr_length
+    ax1.plot(x, data["r0mean"], linestyle="none", marker="o")
+    ax1.fill_between(
+        x,
+        data["r0mean"] - data["r0sig"],
+        data["r0mean"] + data["r0sig"],
+        alpha=0.15, lw=0, zorder=-1,
+    )
+    ax2.plot(x, data["sig2mean"], linestyle="none", marker="o")
+    ax2.fill_between(
+        x,
+        data["sig2mean"] - data["sig2sig"],
+        data["sig2mean"] + data["sig2sig"],
+        alpha=0.15, lw=0, zorder=-1,
+    )
+xgrid = np.logspace(-0.5, 1.7, 200)
+for ax in [ax1, ax2]:
+    ax.axvline(1.0, color="k", linestyle="dotted")
+    ax.axhline(1.0, color="k", linestyle="dotted")
+    ax.plot(
+        xgrid, 
+        finite_box_effect(xgrid, scale=3.6), 
+        color="k", linestyle="dashed",
+    )
+
+    
+ax1.set(
+    ylabel=r"Apparent $r_0$ / true $r_0$",
+)
+ax2.set(
+    xscale="log",
+    #yscale="log",
+    #xlim=[1, 300],
+    #ylim=[0, None],
+    xlabel=r"Box size / correlation length: $L\, /\, r_0$",
+    ylabel=r"Apparent $\sigma^2$ / true $\sigma^2$",
+)
+sns.despine()
+fig.tight_layout()
+fig.savefig("fake-finite-box-effect.pdf");
+# -
+
+# We find that the same function: $1 - \exp(-x / 3.6)$ is an adequate fit to both the $r_0$ and the $\sigma^2$ behaviors.
 
 # ## Fake emissivity and velocity cubes
 #

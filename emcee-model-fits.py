@@ -595,7 +595,7 @@ corner_plot(result_emcee_606b, result_606b, "ngc606b", data_ranges=[0.95, 0.99, 
 
 # So this seems to be working OK now with the freely floating seeing.  Note that the seeing posterior distribution is bimodal, with it either being around 1.5 pc (as with the LM solution) or around 3.5 pc.  The latter is a FWHM of 2 arcsec, which is probably too high.  But if the seeing truly were so high, then the model has to have much smaller `r0` and much larger `sig2`.
 
-#
+# This all assumes uniform priors on the parameters, so the posterior distributions are just the likelihoods.  If we were to have a way to get a better prior for the seeing, then we might be able to get tighter posterior distributions. 
 
 result_606b.params
 

@@ -9,7 +9,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.11.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -69,11 +69,19 @@ ax.set_aspect("equal")
 #
 # ### Calculate the structure function
 
-sf = strucfunc.strucfunc_numba_parallel(vha, wmap=iha)
+# #### Revisiting 2021-10-15
+#
+# Trim of the edges of the map.  Use the same boundaries as in the above image.
+
+trim = (slice(10, 340), slice(10, 315))
+
+vha[trim].shape
+
+sf = strucfunc.strucfunc_numba_parallel(vha[trim], wmap=iha[trim], dlogr=0.05)
 
 sf
 
-sig2 = np.var(vha)
+sig2 = np.var(vha[trim])
 sig2
 
 good = (~m) & (iha > 0.001)
