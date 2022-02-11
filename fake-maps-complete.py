@@ -324,4 +324,77 @@ ax.set(
 #
 #
 
+sys.path.append("../JavierGVastro/PhD.Paper")
+import bfunc
+
+r0 = 64.0
+N = 512
+m = 1.0
+s0 = 1.5
+noise = 0.05
+
+# +
+fig, ax = plt.subplots(
+    figsize=(10, 8),
+)
+mask = sfs_und[0]["N pairs"] > 0
+r = 10**sfs_und[0]["log10 r"][mask]
+
+#ax.plot(r, Bm0, linewidth=6, color="r", alpha=0.3)
+
+
+rgrid = np.logspace(0.0, np.log10(N))
+ax.plot(rgrid, bfunc.bfunc00s(rgrid, r0/2, 1.0, m), linewidth=4, color="b", alpha=0.8)
+
+ax.plot(
+    rgrid, 
+    bfunc.bfunc04s(rgrid, r0/2, 1.0, m, s0=s0, noise=0.0, box_size=N), 
+    linewidth=4, 
+    color="g",
+    alpha=0.8,
+)
+
+ax.plot(
+    rgrid, 
+    bfunc.bfunc04s(rgrid, r0/2, 1.0, m, s0=s0, noise=noise, box_size=N), 
+    linewidth=4, 
+    color="r",
+    alpha=1.0,
+)
+
+mm = rgrid <= N / 4
+ax.plot(
+    rgrid[mm], 
+    bfunc.bfunc04s(rgrid[mm], r0/2, 1.0, m, s0=s0, noise=noise, box_size=N/4), 
+    ls="dashed",
+    linewidth=4, 
+    color="r",
+    alpha=0.4,
+    zorder=100,
+)
+
+#for scale in 0.02, 0.08:
+#    ax.plot(rgrid, scale * rgrid**m, color="0.8")
+#    ax.plot(rgrid, 0.5 * scale * rgrid**2, color="0.9")
+
+
+ax.axhline(1.0, color="k", linestyle="dotted")
+ax.axvline(r0 / 2, color="k", linestyle="dotted")
+ax.axhline(noise, color="k", linestyle="dotted")
+ax.axvline(s0, color="k", linestyle="dotted")
+
+
+ax.set_aspect("equal")
+ax.set(
+    xscale="log", yscale="log",
+    ylim=[8e-3, 6],
+    xlim=[0.15, 1.5*N],
+)
+ax.set_xticks([1, 4, 16, 64, 256])
+ax.set_xticklabels(["1", "4", "16", '64', "256"])
+ax.set_xticks([2, 8, 32, 128, 512], minor=True)
+ax.set_xticklabels([], minor=True)
+...;
+# -
+
 
