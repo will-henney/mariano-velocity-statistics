@@ -327,11 +327,15 @@ ax.set(
 sys.path.append("../JavierGVastro/PhD.Paper")
 import bfunc
 
-r0 = 64.0
+# Choose some parameters for the model strucfunc that we want to demonstrate
+
+r0 = 128.0
 N = 512
 m = 1.0
 s0 = 1.5
 noise = 0.05
+
+# Make a plot that we will annotate by hand:
 
 # +
 fig, ax = plt.subplots(
@@ -343,7 +347,7 @@ r = 10**sfs_und[0]["log10 r"][mask]
 #ax.plot(r, Bm0, linewidth=6, color="r", alpha=0.3)
 
 
-rgrid = np.logspace(0.0, np.log10(N))
+rgrid = np.logspace(0.0, np.log10(np.sqrt(2) * N))
 ax.plot(rgrid, bfunc.bfunc00s(rgrid, r0/2, 1.0, m), linewidth=4, color="b", alpha=0.8)
 
 ax.plot(
@@ -362,7 +366,7 @@ ax.plot(
     alpha=1.0,
 )
 
-mm = rgrid <= N / 4
+mm = rgrid <= np.sqrt(2) * N / 4
 ax.plot(
     rgrid[mm], 
     bfunc.bfunc04s(rgrid[mm], r0/2, 1.0, m, s0=s0, noise=noise, box_size=N/4), 
@@ -380,21 +384,142 @@ ax.plot(
 
 ax.axhline(1.0, color="k", linestyle="dotted")
 ax.axvline(r0 / 2, color="k", linestyle="dotted")
-ax.axhline(noise, color="k", linestyle="dotted")
-ax.axvline(s0, color="k", linestyle="dotted")
+ax.axhline(noise, linestyle="dotted", color="r")
+ax.axvline(s0, linestyle="dotted", color="g")
 
 
 ax.set_aspect("equal")
 ax.set(
     xscale="log", yscale="log",
-    ylim=[8e-3, 6],
-    xlim=[0.15, 1.5*N],
+    ylim=[5e-3, 6],
+    xlim=[0.3, 1.5*N],
 )
 ax.set_xticks([1, 4, 16, 64, 256])
 ax.set_xticklabels(["1", "4", "16", '64', "256"])
 ax.set_xticks([2, 8, 32, 128, 512], minor=True)
 ax.set_xticklabels([], minor=True)
+ax.set_yticks([0.01, 0.1,  1.0])
+ax.set_yticklabels(["0.01", "0.10", "1.00"])
+sns.despine()
+fig.savefig("model-strucfunc-demo.pdf")
 ...;
 # -
+
+from numpy.random import default_rng
+rng = default_rng()
+
+
+def addnoise(arr, noise):
+    return arr + np.sqrt(noise) * rng.standard_normal(arr.shape)
+
+
+# Look at all the different variants of the fake velocity field:
+
+# +
+vms_0 = [
+    normalize(_) for _ in 
+    split_square_in_4(
+        make_extended(
+            2 * N, powerlaw=2.0 + m, 
+            ellip=0.5, theta=45, 
+            correlation_length=r0,
+            randomseed=2022_02_09,
+        )
+    )
+]
+vms_1 = [
+    normalize(_)
+    for _ in 
+    split_square_in_4(
+        convolve_fft(
+            make_extended(
+                2 * N, powerlaw=2.0 + m, 
+                ellip=0.5, theta=45, 
+                correlation_length=r0,
+                randomseed=2022_02_09,
+            ),
+            Gaussian2DKernel(x_stddev=s0), 
+            boundary="wrap",
+        )
+    )
+]
+vms_2 = [
+    addnoise(normalize(_), noise)
+    for _ in 
+    split_square_in_4(
+        convolve_fft(
+            make_extended(
+                2 * N, powerlaw=2.0 + m, 
+                ellip=0.5, theta=45, 
+                correlation_length=r0,
+                randomseed=2022_02_09,
+            ),
+            Gaussian2DKernel(x_stddev=s0), 
+            boundary="wrap",
+        )
+    )
+]
+vms_tap = [
+    addnoise(normalize(taper(_, 1.0)), noise)
+    for _ in 
+    split_square_in_4(
+        convolve_fft(
+            make_extended(
+                2 * N, powerlaw=2.0 + m, 
+                ellip=0.5, theta=45, 
+                correlation_length=r0,
+                randomseed=2022_02_09,
+            ),
+            Gaussian2DKernel(x_stddev=s0), 
+            boundary="wrap",
+        )
+    )
+]
+
+wav0 = 0.75 * N
+vms_und = [
+    addnoise(
+        undulate(normalize(_), wavelength=wav0, angle=-45, amplitude=1.0),
+        noise,
+    )
+    for _ in 
+    split_square_in_4(
+        convolve_fft(
+            make_extended(
+                2 * N, powerlaw=2.0 + m, 
+                ellip=0.5, theta=45, 
+                correlation_length=r0,
+                randomseed=2022_02_09,
+            ),
+            Gaussian2DKernel(x_stddev=s0), 
+            boundary="wrap",
+        )
+    )
+]
+# -
+
+fig, axes = plt.subplots(
+    2, 3, 
+    sharex=True, sharey=True,
+    figsize=(12, 8),
+)
+imshow_kwds = dict(origin="lower", vmin=-3, vmax=3, cmap="RdBu_r")
+im0 = axes[0, 0].imshow(vms_0[0], **imshow_kwds)
+im1 = axes[0, 1].imshow(vms_1[0], **imshow_kwds)
+im2 = axes[0, 2].imshow(vms_2[0], **imshow_kwds)
+im_tap = axes[1, 0].imshow(vms_tap[0], **imshow_kwds)
+im_und = axes[1, 1].imshow(vms_und[0], **imshow_kwds)
+axes[1, 2].axis("off")
+fig.savefig("vmap-demo-grid.pdf")
+...;
+
+# Write out PNG images of all the velocity fields. We will use some of these in our figure.
+
+for icorner in range(4):
+    plt.imsave(f"vmap-0-demo-{icorner}.png", vms_0[icorner], **imshow_kwds)
+    plt.imsave(f"vmap-1-demo-{icorner}.png", vms_1[icorner], **imshow_kwds)
+    plt.imsave(f"vmap-2-demo-{icorner}.png", vms_2[icorner], **imshow_kwds)
+    plt.imsave(f"vmap-tap-demo-{icorner}.png", vms_tap[icorner], **imshow_kwds)
+    plt.imsave(f"vmap-und-demo-{icorner}.png", vms_und[icorner], **imshow_kwds)
 
 
