@@ -697,17 +697,32 @@ def split4_and_strucfuncs(arrs, niter=1):
         except:
             r0 = np.nan
         r0s.append(r0)
+    r0s = np.array(r0s)
+    mgood = np.isfinite(r0s)
     Bmean = np.mean(np.stack(BB), axis=0)
     Bsig = np.std(np.stack(BB), axis=0)
+    # calculate quartiles
+    Bp25 = np.percentile(np.stack(BB), 25, axis=0)
+    Bp75 = np.percentile(np.stack(BB), 75, axis=0)
+    Bp05 = np.percentile(np.stack(BB), 5, axis=0)
+    Bp95 = np.percentile(np.stack(BB), 95, axis=0)
     return {
         #"subarrs": subarrs,
         "r": r,
         "Bmean": Bmean,
         "Bsig": Bsig,
+        "Bp05": Bp05,
+        "Bp25": Bp25,
+        "Bp75": Bp75,
+        "Bp95": Bp95,
         "sig2mean": np.mean(sig2s),
         "sig2sig": np.std(sig2s),
+        "sig2_25": np.percentile(sig2s, 25),
+        "sig2_75": np.percentile(sig2s, 75),
         "r0mean": np.nanmean(r0s),
         "r0sig": np.nanstd(r0s),
+        "r0_25": np.percentile(r0s[mgood], 25),
+        "r0_75": np.percentile(r0s[mgood], 75),
     }
 
 
@@ -736,7 +751,7 @@ bcolors = cmr.take_cmap_colors(
 
 # +
 fig, ax = plt.subplots(
-    figsize=(8, 5),
+    figsize=(8, 8),
 )
 
 whitebox = dict(color="white", alpha=1.0, pad=0.0)
@@ -745,13 +760,19 @@ N = 2
 for split, bcolor in zip(splits.values(), bcolors):
     line = ax.plot(split["r"], split["Bmean"], marker=".", color=bcolor)
     c = line[0].get_color()
+    #ax.fill_between(
+    #    split["r"], 
+    #    split["Bp05"], 
+    #    split["Bp95"],
+    #    color=c, alpha=0.1, linewidth=0, zorder=-1,
+    #)
     ax.fill_between(
         split["r"], 
-        split["Bmean"] - split["Bsig"], 
-        split["Bmean"] + split["Bsig"],
-        color=c, alpha=0.1, linewidth=0, zorder=-1,
+        split["Bp25"], 
+        split["Bp75"],
+        color=c, alpha=0.2, linewidth=0, zorder=-1,
     )
-    x, y = split["r"][-4], split["Bmean"][-4] * 1.7
+    x, y = split["r"][-4], split["Bp75"][-4] * 1.3
     ax.text(
         x, y, (rf"$N = {N**2}$" "\n" rf"$L = {L}$"), 
         color=c, ha="center", va="bottom",
@@ -769,21 +790,44 @@ for scale in 0.025, 0.1:
 
 ax.axhline(1.0, color="k", linestyle="dotted")
 ax.axvline(true_r0, color="k", linestyle="dotted")
+
+# plot the range of derived r0 and sigma for smallest L
+ax.axhline(split["sig2mean"], color=c, linestyle="dotted")
+ax.axhspan(
+    split["sig2_25"],
+    split["sig2_75"],
+    color=c,
+    alpha=0.2,
+)
+ax.axvline(split["r0mean"], color=c, linestyle="dotted")
+ax.axvspan(
+    split["r0_25"],
+    split["r0_75"],
+    color=c,
+    alpha=0.2,
+)
+
 ax.text(
-    true_r0, 0.03, 
+    true_r0, 0.04, 
     rf"$r_0 = {true_r0:.1f}$",
     color="k", fontsize="x-small", ha="center", va="bottom",
     bbox=whitebox,
 )
 ax.set(
     xscale="log", yscale="log",
-    ylim=[0.02, 3.9],
+    ylim=[0.03, 4.9],
     xlabel=r"Separation, $r$, pixels",
     ylabel=r"$B(r) \, / \, \sigma^2$",
 )
+ax.set_aspect("equal")
 sns.despine()
 fig.tight_layout()
 fig.savefig("fake-finite-box-strucfunc.pdf");
+# -
+
+# We have now changed this plot to use the 5, 25, 75, 95 centiles of the distributions. This is more realistic than using the mean +/- sigma, although it turns out to not make much difference.
+#
+# I have also plotted the mean and quartiles of the r0 and sigma for the smallest box `L=8`, which gives $r_0 \approx L/4$
 
 # +
 NN = 512
@@ -811,6 +855,7 @@ fig.savefig("fake-finite-box-images.pdf");
 N, m, r0
 
 # +
+N = 256
 vms_r16 = split_square_in_4(
     normalize(
         make_extended(
