@@ -352,7 +352,7 @@ ax.plot(rgrid, bfunc.bfunc00s(rgrid, r0/2, 1.0, m), linewidth=4, color="b", alph
 
 ax.plot(
     rgrid, 
-    bfunc.bfunc04s(rgrid, r0/2, 1.0, m, s0=s0, noise=0.0, box_size=N), 
+    bfunc.bfunc03s(rgrid, r0/2, 1.0, m, s0=s0, noise=0.0), 
     linewidth=4, 
     color="g",
     alpha=0.8,
@@ -360,22 +360,22 @@ ax.plot(
 
 ax.plot(
     rgrid, 
-    bfunc.bfunc04s(rgrid, r0/2, 1.0, m, s0=s0, noise=noise, box_size=N), 
+    bfunc.bfunc03s(rgrid, r0/2, 1.0, m, s0=s0, noise=noise), 
     linewidth=4, 
     color="r",
     alpha=1.0,
 )
 
-mm = rgrid <= np.sqrt(2) * N / 4
-ax.plot(
-    rgrid[mm], 
-    bfunc.bfunc04s(rgrid[mm], r0/2, 1.0, m, s0=s0, noise=noise, box_size=N/4), 
-    ls="dashed",
-    linewidth=4, 
-    color="r",
-    alpha=0.4,
-    zorder=100,
-)
+# mm = rgrid <= np.sqrt(2) * N / 4
+# ax.plot(
+#     rgrid[mm], 
+#     bfunc.bfunc04s(rgrid[mm], r0/2, 1.0, m, s0=s0, noise=noise, box_size=N/4), 
+#     ls="dashed",
+#     linewidth=4, 
+#     color="r",
+#     alpha=0.4,
+#     zorder=100,
+# )
 
 #for scale in 0.02, 0.08:
 #    ax.plot(rgrid, scale * rgrid**m, color="0.8")
